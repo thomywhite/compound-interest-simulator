@@ -7,40 +7,38 @@
 
   <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = { darkMode: 'class' }
-  </script>
+  <script>tailwind.config = { darkMode: 'class' };</script>
   <style>
     :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
     html, body, #root { height: 100%; }
   </style>
 
-  <!-- Babel runtime so JSX compiles in the browser -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Babel (compile JSX in the browser) -->
+  <script src="https://unpkg.com/@babel/standalone@7.25.7/babel.min.js"></script>
 
-  <!-- UMD globals (no imports, no bundler) -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/framer-motion@11/dist/framer-motion.umd.js"></script>
+  <!-- React 18 UMD (PINNED + correct order) -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+
+  <!-- Math + Charts (PINNED) -->
   <script src="https://unpkg.com/decimal.js@10.4.3/decimal.js"></script>
-  <script src="https://unpkg.com/recharts@2/umd/Recharts.js"></script>
+  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.min.js"></script>
 </head>
 <body class="min-h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
   <div id="root"></div>
 
-  <!-- Your app, compiled by Babel at runtime -->
+  <!-- App -->
   <script type="text/babel">
-    // Grab UMD globals
-    const { useEffect, useMemo, useState, useRef } = React;
-    const { createRoot } = ReactDOM; // React 18 UMD exposes createRoot
-    const { motion, AnimatePresence } = window.framerMotion || {};
+    // UMD globals
+    const { useEffect, useMemo, useState } = React;
+    const ReactDOMGlobal = window.ReactDOM;
     const {
       ResponsiveContainer, AreaChart, Area, BarChart, Bar,
       XAxis, YAxis, Tooltip, Legend, CartesianGrid
     } = Recharts;
     const DecimalJS = window.Decimal;
 
-    // --- i18n (FR default) ---
+    // --- i18n ---
     const dict = {
       fr: {
         title: "Simulateur d’intérêt composé",
@@ -55,8 +53,7 @@
           rate: "Rendement annuel nominal (r%)",
           fee: "Frais annuels (fee%)",
           infl: "Inflation (infl%)",
-          horizon: "Horizon",
-          years: "années", months: "mois",
+          horizon: "Horizon", years: "années", months: "mois",
           target: "Cible (FV)",
           timing: "Moment de la contribution",
           start: "Début de période", end: "Fin de période",
@@ -80,13 +77,13 @@
           {key:'monthly', label:'Contributions mensuelles'},
           {key:'aggressive', label:'Agressif (rendement élevé)'}
         ],
-        actions: { reset:'Réinitialiser', copy:'Copier le lien', csv:'Exporter CSV' },
-        state: { copied:'Lien copié' },
+        actions: { reset:"Réinitialiser", copy:"Copier le lien", csv:"Exporter CSV" },
+        state: { copied:"Lien copié" },
         unreachable: "Cible inatteignable avec ces paramètres.",
         suggestion: "Augmentez la contribution, l’horizon, ou le rendement.",
         timeToGoal: (y,m) => `Durée estimée: ${y} an(s) ${m} mois`,
         requiredPMT: (val,cur) => `Contribution requise: ${cur}${fmt(val)}/période`,
-        language:'Langue', currency:'Devise', theme:'Thème', light:'Clair', dark:'Sombre'
+        language:"Langue", currency:"Devise"
       },
       en: {
         title: "Compound Interest Simulator",
@@ -101,8 +98,7 @@
           rate: "Annual nominal return (r%)",
           fee: "Annual fees (fee%)",
           infl: "Inflation (infl%)",
-          horizon: "Horizon",
-          years: "years", months: "months",
+          horizon: "Horizon", years: "years", months: "months",
           target: "Target (FV)",
           timing: "Contribution timing",
           start: "Start of period", end: "End of period",
@@ -126,27 +122,28 @@
           {key:'monthly', label:'Monthly contributions'},
           {key:'aggressive', label:'Aggressive (higher return)'}
         ],
-        actions: { reset:'Reset', copy:'Copy link', csv:'Export CSV' },
-        state: { copied:'Link copied' },
+        actions: { reset:"Reset", copy:"Copy link", csv:"Export CSV" },
+        state: { copied:"Link copied" },
         unreachable: "Target is unreachable with these parameters.",
-        suggestion: "Try a higher contribution, longer horizon, or higher return.",
+        suggestion: "Increase contribution, horizon or return.",
         timeToGoal: (y,m) => `Estimated duration: ${y} year(s) ${m} month(s)`,
         requiredPMT: (val,cur) => `Required contribution: ${cur}${fmt(val)}/period`,
-        language:'Language', currency:'Currency', theme:'Theme', light:'Light', dark:'Dark'
+        language:"Language", currency:"Currency"
       }
     };
 
     // --- utils ---
     const clamp = (v,min,max)=>Math.min(Math.max(v,min),max);
-    const fmt = (n)=> new Intl.NumberFormat(undefined,{maximumFractionDigits:2}).format(Number(n));
-    const currencyFmt = (n, sym)=> `${sym}${fmt(n)}`;
+    const fmt = n => new Intl.NumberFormat(undefined,{maximumFractionDigits:2}).format(Number(n));
+    const currencyFmt = (n,sym)=> `${sym}${fmt(n)}`;
     const FREQ = { daily:365, weekly:52, monthly:12, yearly:1 };
 
     const DEFAULTS = {
-      mode:'fv', lang:'fr', currency:'$', theme:'auto',
-      p0:10000, pmt:200, rate:7, fee:0.5, infl:2, years:20, months:0,
-      target:100000, contribFreq:'monthly', compFreq:'monthly', timing:'end',
-      showTaxes:false
+      mode:'fv', lang:'fr', currency:'$',
+      p0:10000, pmt:200, rate:7, fee:0.5, infl:2,
+      years:20, months:0, target:100000,
+      contribFreq:'monthly', compFreq:'monthly',
+      timing:'end', showTaxes:false
     };
 
     function readStateFromURL(){
@@ -158,7 +155,6 @@
         mode:get('mode',DEFAULTS.mode),
         lang:get('lang',DEFAULTS.lang),
         currency:get('cur',DEFAULTS.currency),
-        theme:get('theme',DEFAULTS.theme),
         p0:num('p0',DEFAULTS.p0),
         pmt:num('pmt',DEFAULTS.pmt),
         rate:num('r',DEFAULTS.rate),
@@ -175,10 +171,11 @@
     }
     function writeStateToURL(s){
       const p = new URLSearchParams();
-      p.set('mode',s.mode); p.set('lang',s.lang); p.set('theme',s.theme); p.set('cur',s.currency);
+      p.set('mode',s.mode); p.set('lang',s.lang); p.set('cur',s.currency);
       p.set('p0',s.p0); p.set('pmt',s.pmt); p.set('r',s.rate); p.set('fee',s.fee); p.set('infl',s.infl);
-      p.set('y',s.years); p.set('m',s.months); p.set('tgt',s.target); p.set('cf',s.contribFreq);
-      p.set('pf',s.compFreq); p.set('tim',s.timing); p.set('tax',s.showTaxes?'1':'0');
+      p.set('y',s.years); p.set('m',s.months); p.set('tgt',s.target);
+      p.set('cf',s.contribFreq); p.set('pf',s.compFreq); p.set('tim',s.timing);
+      p.set('tax',s.showTaxes ? '1':'0');
       history.replaceState(null,'',`${location.pathname}?${p.toString()}`);
     }
 
@@ -186,9 +183,9 @@
     function netNominal(rPct,fPct){
       const r = new DecimalJS(rPct).div(100);
       const f = new DecimalJS(fPct).div(100);
-      return r.plus(1).div(f.plus(1)).minus(1);
+      return r.plus(1).div(f.plus(1)).minus(1); // (1+r)/(1+f) - 1
     }
-    function earAfterFees(rPct,fPct, compKey){
+    function earAfterFees(rPct,fPct,compKey){
       const rNet = netNominal(rPct,fPct);
       const m = new DecimalJS(FREQ[compKey]);
       return rNet.div(m).plus(1).pow(m).minus(1);
@@ -198,7 +195,7 @@
       const rNet = netNominal(ratePct,feePct);
       const mComp = new DecimalJS(FREQ[compFreqKey]);
       const mContrib = new DecimalJS(FREQ[contribFreqKey]);
-      const mStep = DecimalJS.max(mComp,mContrib);
+      const mStep = DecimalJS.max(mComp,mContrib);       // finest step
       const dt = new DecimalJS(1).div(mStep);
       const steps = DecimalJS.ceil(totalYears.times(mStep)).toNumber();
       const iComp = rNet.div(mComp);
@@ -208,8 +205,8 @@
       let growth = new DecimalJS(0);
       let compCounter = new DecimalJS(0);
       let contribCounter = new DecimalJS(0);
-      const data = [];
 
+      const data = [];
       for (let s=0; s<=steps; s++){
         const tYears = new DecimalJS(s).times(dt);
         const realAdj = new DecimalJS(1).plus(new DecimalJS(inflPct).div(100)).pow(tYears);
@@ -235,7 +232,7 @@
         if (compEvents>0){
           for (let k=0;k<compEvents;k++){
             const before=balance; balance=balance.times(iComp.plus(1));
-            growth=growth.plus(balance.minus(before));
+            growth = growth.plus(balance.minus(before));
           }
           compCounter=compCounter.minus(compEvents);
         }
@@ -252,15 +249,13 @@
       return { final, totalContrib, totalGrowth, realFinal, data, ear: earAfterFees(ratePct,feePct,compFreqKey) };
     }
     function timeToGoalSim(params){
-      const maxYears=100;
-      const target = new DecimalJS(params.target);
-      const rNet = netNominal(params.ratePct, params.feePct);
-      const mComp = new DecimalJS(FREQ[params.compFreqKey]);
-      const mContrib = new DecimalJS(FREQ[params.contribFreqKey]);
-      const mStep = DecimalJS.max(mComp, mContrib);
-      const iComp = rNet.div(mComp);
-      let balance = new DecimalJS(params.p0);
-      let contributed = new DecimalJS(0);
+      const maxYears=100, target=new DecimalJS(params.target);
+      const rNet=netNominal(params.ratePct,params.feePct);
+      const mComp=new DecimalJS(FREQ[params.compFreqKey]);
+      const mContrib=new DecimalJS(FREQ[params.contribFreqKey]);
+      const mStep=DecimalJS.max(mComp,mContrib);
+      const iComp=rNet.div(mComp);
+      let balance=new DecimalJS(params.p0);
       let compCounter=new DecimalJS(0), contribCounter=new DecimalJS(0);
       let steps=0, maxSteps=mStep.times(maxYears).toNumber();
       for (; steps<=maxSteps; steps++){
@@ -270,23 +265,22 @@
         const compEvents=compCounter.floor().toNumber();
         const contribEvents=contribCounter.floor().toNumber();
         if (contribEvents>0 && params.timing==='start'){
-          const add=new DecimalJS(params.pmt).times(contribEvents);
-          balance=balance.plus(add); contributed=contributed.plus(add);
+          balance=balance.plus(new DecimalJS(params.pmt).times(contribEvents));
           contribCounter=contribCounter.minus(contribEvents);
         }
         if (compEvents>0){
-          for (let k=0;k<compEvents;k++){ balance=balance.times(iComp.plus(1)); }
+          for (let k=0;k<compEvents;k++) balance=balance.times(iComp.plus(1));
           compCounter=compCounter.minus(compEvents);
         }
         if (contribEvents>0 && params.timing==='end'){
-          const add=new DecimalJS(params.pmt).times(contribEvents);
-          balance=balance.plus(add); contributed=contributed.plus(add);
+          balance=balance.plus(new DecimalJS(params.pmt).times(contribEvents));
           contribCounter=contribCounter.minus(contribEvents);
         }
       }
       if (steps>maxSteps) return { reachable:false, years:maxYears, months:0 };
       const tYears = new DecimalJS(steps).div(mStep);
-      const years=tYears.floor(); const months=tYears.minus(years).times(12).round();
+      const years = tYears.floor();
+      const months = tYears.minus(years).times(12).round();
       return { reachable:true, years:years.toNumber(), months:months.toNumber(), tYears:tYears.toNumber() };
     }
     function requiredPMTByBisection(params){
@@ -308,20 +302,17 @@
     function exportCSV(rows, filename='simulation.csv'){
       const header = ['step','years','balance','contributed','growth','real_balance'];
       const lines = [header.join(',')];
-      for (const r of rows){
-        lines.push([r.step,r.tYears,r.balance,r.contributed,r.growth,r.realBalance].join(','));
-      }
+      for (const r of rows) lines.push([r.step,r.tYears,r.balance,r.contributed,r.growth,r.realBalance].join(','));
       const blob=new Blob([lines.join('\n')],{type:'text/csv'});
       const url=URL.createObjectURL(blob); const a=document.createElement('a');
       a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
     }
 
-    // simple UI components (no icon lib)
+    // UI bits
     const Card = ({children}) =>
       <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 shadow p-4">{children}</div>;
     const KPI = ({label,value}) =>
       <div className="flex flex-col"><span className="text-xs text-slate-500 uppercase">{label}</span><span className="text-xl font-semibold">{value}</span></div>;
-
     const Segmented = ({ options, value, onChange, label }) =>
       <div className="flex flex-col gap-2">
         {label && <label className="text-sm text-slate-600 dark:text-slate-300">{label}</label>}
@@ -333,7 +324,6 @@
           )}
         </div>
       </div>;
-
     function NumberInput({ id, label, value, onChange, step=1, min=0, max=1e9, suffix, slider=false }){
       const [local,setLocal] = useState(String(value));
       useEffect(()=>setLocal(String(value)),[value]);
@@ -377,7 +367,7 @@
                   <Area type="monotone" dataKey="balance" strokeWidth={2} fillOpacity={0.2} fill="url(#g1)" stroke="#2563eb" name="Solde / Balance"/>
                   <defs>
                     <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopOpacity={0.3}/><stop offset="95%" stopOpacity={0}/>
+                      <stop offset="5%" stopOpacity="0.3"/><stop offset="95%" stopOpacity="0"/>
                     </linearGradient>
                   </defs>
                 </AreaChart>
@@ -392,7 +382,7 @@
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="tYears" tickFormatter={yearsTick} />
                   <YAxis tickFormatter={money} width={80} />
-                  <Tooltip formatter={v=>money(v)} />
+                  <Tooltip formatter={money} />
                   <Area type="monotone" dataKey="contributed" stackId="1" stroke="#0ea5e9" fillOpacity={0.2} name="Contributions" />
                   <Area type="monotone" dataKey={d=>Math.max(0, d.balance - d.contributed)} stackId="1" stroke="#22c55e" fillOpacity={0.2} name="Croissance / Growth" />
                 </AreaChart>
@@ -425,13 +415,11 @@
       useEffect(()=>writeStateToURL(state),[state]);
 
       const horizonYears = useMemo(()=> new DecimalJS(state.years).plus(new DecimalJS(state.months).div(12)).toNumber(), [state.years, state.months]);
-
       const simParams = useMemo(()=>({
         p0:state.p0, pmt:state.pmt, ratePct:state.rate, feePct:state.fee, inflPct:state.infl,
         years: state.mode==='time' ? 1 : horizonYears, months:0,
         compFreqKey:state.compFreq, contribFreqKey:state.contribFreq, timing:state.timing
       }), [state, horizonYears]);
-
       const sim = useMemo(()=> simulate(simParams), [simParams]);
 
       const timeResult = useMemo(()=>{
@@ -452,17 +440,15 @@
         }).toNumber();
       }, [state]);
 
-      useEffect(()=>{
-        const btn=document.getElementById('csv-btn'); if(!btn) return;
-        const h=()=>exportCSV(sim.data); btn.addEventListener('click',h); return()=>btn.removeEventListener('click',h);
-      }, [sim]);
-
-      const earPct = sim.ear.times(100).toNumber();
-      const k1 = (state.mode==='time') ? currencyFmt(state.target, state.currency) : currencyFmt(sim.final, state.currency);
-      const k2 = currencyFmt(sim.totalContrib, state.currency);
-      const k3 = currencyFmt(sim.totalGrowth, state.currency);
-      const k4 = `${fmt(earPct)}%`;
-      const k5 = currencyFmt(sim.realFinal, state.currency);
+      const KPIs = () => (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Card><KPI label={t.outputs.final}  value={(state.mode==='time') ? currencyFmt(state.target, state.currency) : currencyFmt(sim.final, state.currency)}/></Card>
+          <Card><KPI label={t.outputs.contrib} value={currencyFmt(sim.totalContrib, state.currency)}/></Card>
+          <Card><KPI label={t.outputs.growth} value={currencyFmt(sim.totalGrowth, state.currency)}/></Card>
+          <Card><KPI label={t.outputs.ear}    value={`${fmt(sim.ear.times(100).toNumber())}%`}/></Card>
+          <Card><KPI label={t.outputs.real}   value={currencyFmt(sim.realFinal, state.currency)}/></Card>
+        </div>
+      );
 
       const freqOpts = [
         {value:'daily', label:t.daily},
@@ -493,15 +479,14 @@
             </div>
           </div>
 
-          {/* Controls */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <section aria-label="Paramètres">
               <div className="grid gap-4">
                 <div className="flex gap-2" role="tablist" aria-label="Modes">
                   {[
-                    {key:'fv', label:t.modeTabs[0]},
+                    {key:'fv',   label:t.modeTabs[0]},
                     {key:'time', label:t.modeTabs[1]},
-                    {key:'pmt', label:t.modeTabs[2]}
+                    {key:'pmt',  label:t.modeTabs[2]}
                   ].map(tab =>
                     <button key={tab.key} role="tab" aria-selected={state.mode===tab.key}
                       onClick={()=>setState(s=>({...s, mode:tab.key}))}
@@ -513,26 +498,36 @@
 
                 <Card>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <NumberInput id="p0" label={t.inputs.p0} value={state.p0} onChange={v=>setState(s=>({...s, p0:v}))} min={0} step={100} slider/>
+                    <NumberInput id="p0"    label={t.inputs.p0}    value={state.p0}    onChange={v=>setState(s=>({...s, p0:v}))} min={0} step={100} slider/>
                     {state.mode!=='time' &&
-                      <NumberInput id="pmt" label={t.inputs.pmt} value={state.pmt} onChange={v=>setState(s=>({...s, pmt:v}))} min={0} step={10} slider/>}
-                    <NumberInput id="rate" label={t.inputs.rate} value={state.rate} onChange={v=>setState(s=>({...s, rate:v}))} min={-50} max={100} step={0.1} suffix="%" slider/>
-                    <NumberInput id="fee" label={t.inputs.fee} value={state.fee} onChange={v=>setState(s=>({...s, fee:v}))} min={0} max={10} step={0.1} suffix="%" slider/>
-                    <NumberInput id="infl" label={t.inputs.infl} value={state.infl} onChange={v=>setState(s=>({...s, infl:v}))} min={0} max={20} step={0.1} suffix="%" slider/>
+                      <NumberInput id="pmt" label={t.inputs.pmt} value={state.pmt} onChange={v=>setState(s=>({...s, pmt:v}))} min={0} step={10}  slider/>}
+                    <NumberInput id="rate"  label={t.inputs.rate}  value={state.rate}  onChange={v=>setState(s=>({...s, rate:v}))} min={-50} max={100} step={0.1} suffix="%" slider/>
+                    <NumberInput id="fee"   label={t.inputs.fee}   value={state.fee}   onChange={v=>setState(s=>({...s, fee:v}))} min={0}  max={10}  step={0.1} suffix="%" slider/>
+                    <NumberInput id="infl"  label={t.inputs.infl}  value={state.infl}  onChange={v=>setState(s=>({...s, infl:v}))} min={0}  max={20}  step={0.1} suffix="%" slider/>
                     {state.mode!=='time' &&
                       <div className="grid grid-cols-2 gap-3">
-                        <NumberInput id="years" label={t.inputs.years} value={state.years} onChange={v=>setState(s=>({...s, years:v}))} min={0} max={120} step={1}/>
-                        <NumberInput id="months" label={t.inputs.months} value={state.months} onChange={v=>setState(s=>({...s, months:v}))} min={0} max={11} step={1}/>
+                        <NumberInput id="years"  label={t.inputs.years}  value={state.years}  onChange={v=>setState(s=>({...s, years:v}))}  min={0} max={120} step={1}/>
+                        <NumberInput id="months" label={t.inputs.months} value={state.months} onChange={v=>setState(s=>({...s, months:v}))} min={0} max={11}  step={1}/>
                       </div>}
                     {state.mode!=='fv' &&
                       <NumberInput id="target" label={t.inputs.target} value={state.target} onChange={v=>setState(s=>({...s, target:v}))} min={0} step={100} slider/>}
 
                     <Segmented label={`${t.frequency} – ${t.contribution}`} value={state.contribFreq}
                       onChange={v=>setState(s=>({...s, contribFreq:v}))}
-                      options={freqOpts}/>
+                      options={[
+                        {value:'daily',   label:t.daily},
+                        {value:'weekly',  label:t.weekly},
+                        {value:'monthly', label:t.monthly},
+                        {value:'yearly',  label:t.yearly}
+                      ]}/>
                     <Segmented label={`${t.frequency} – ${t.compounding}`} value={state.compFreq}
                       onChange={v=>setState(s=>({...s, compFreq:v}))}
-                      options={freqOpts}/>
+                      options={[
+                        {value:'daily',   label:t.daily},
+                        {value:'weekly',  label:t.weekly},
+                        {value:'monthly', label:t.monthly},
+                        {value:'yearly',  label:t.yearly}
+                      ]}/>
                     <Segmented label={t.inputs.timing} value={state.timing}
                       onChange={v=>setState(s=>({...s, timing:v}))}
                       options={[{value:'start',label:t.inputs.start},{value:'end',label:t.inputs.end}]}/>
@@ -544,9 +539,9 @@
                   <label className="text-sm text-slate-600 dark:text-slate-300">{t.presets}</label>
                   <select onChange={e=>{
                     const key=e.target.value;
-                    if (key==='lump') setState(s=>({...s, p0:10000,pmt:0,rate:7,fee:0.5,infl:2,years:20,months:0,contribFreq:'monthly',compFreq:'monthly'}));
-                    if (key==='monthly') setState(s=>({...s, p0:10000,pmt:200,rate:7,fee:0.5,infl:2,years:20,months:0,contribFreq:'monthly',compFreq:'monthly'}));
-                    if (key==='aggressive') setState(s=>({...s, p0:10000,pmt:300,rate:10,fee:0.3,infl:2,years:25,months:0,contribFreq:'weekly',compFreq:'monthly'}));
+                    if (key==='lump') setState(s=>({...s, p0:10000,pmt:0, rate:7,  fee:0.5, infl:2, years:20, months:0, contribFreq:'monthly', compFreq:'monthly'}));
+                    if (key==='monthly') setState(s=>({...s, p0:10000,pmt:200,rate:7,  fee:0.5, infl:2, years:20, months:0, contribFreq:'monthly', compFreq:'monthly'}));
+                    if (key==='aggressive') setState(s=>({...s, p0:10000,pmt:300,rate:10, fee:0.3, infl:2, years:25, months:0, contribFreq:'weekly',  compFreq:'monthly'}));
                   }} defaultValue="">
                     <option value="" disabled>—</option>
                     {t.presetOptions.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}
@@ -568,24 +563,21 @@
             </section>
 
             <section aria-label="Résultats" className="grid gap-4">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <Card><KPI label={dict[state.lang].outputs.final} value={ (state.mode==='time') ? currencyFmt(state.target, state.currency) : currencyFmt(sim.final, state.currency) }/></Card>
-                <Card><KPI label={dict[state.lang].outputs.contrib} value={currencyFmt(sim.totalContrib, state.currency)}/></Card>
-                <Card><KPI label={dict[state.lang].outputs.growth} value={currencyFmt(sim.totalGrowth, state.currency)}/></Card>
-                <Card><KPI label={dict[state.lang].outputs.ear} value={`${fmt(sim.ear.times(100).toNumber())}%`}/></Card>
-                <Card><KPI label={dict[state.lang].outputs.real} value={currencyFmt(sim.realFinal, state.currency)}/></Card>
-              </div>
-
-              {state.mode==='time' &&
+              <KPIs />
+              {state.mode==='time' && (
                 <Card>
                   {timeResult?.reachable
                     ? <p className="text-sm">{dict[state.lang].timeToGoal(timeResult.years, timeResult.months)}</p>
-                    : <><p className="text-sm text-rose-600">{dict[state.lang].unreachable}</p><p className="text-sm mt-1">{dict[state.lang].suggestion}</p></>}
-                </Card>}
-
-              {state.mode==='pmt' &&
-                <Card><p className="text-sm">{dict[state.lang].requiredPMT(requiredPMT ?? 0, state.currency)}</p></Card>}
-
+                    : (<>
+                        <p className="text-sm text-rose-600">{dict[state.lang].unreachable}</p>
+                        <p className="text-sm mt-1">{dict[state.lang].suggestion}</p>
+                      </>)
+                  }
+                </Card>
+              )}
+              {state.mode==='pmt' && (
+                <Card><p className="text-sm">{dict[state.lang].requiredPMT(requiredPMT ?? 0, state.currency)}</p></Card>
+              )}
               <ChartsPanel series={sim.data} t={dict[state.lang].charts} currency={state.currency}/>
             </section>
           </div>
@@ -597,12 +589,23 @@
       );
     }
 
-    createRoot(document.getElementById('root')).render(<App/>);
+    // SAFE RENDER WRAPPER (works with React 18 and falls back if needed)
+    (function mount(){
+      const container = document.getElementById('root');
+      const R = ReactDOMGlobal;
+      if (R && typeof R.createRoot === 'function') {
+        const root = R.createRoot(container); // React 18 path
+        root.render(<App />);
+      } else if (R && typeof R.render === 'function') {
+        R.render(<App />, container);        // Legacy fallback
+      } else {
+        container.textContent = 'ReactDOM not loaded';
+      }
+    })();
   </script>
 </body>
 </html>
 
-    root.render(<App />);
   </script>
 </body>
 </html>

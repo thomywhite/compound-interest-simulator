@@ -1,607 +1,708 @@
-<!doctype html>
-<html lang="fr" class="h-full">
+<!DOCTYPE html>
+<html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Simulateur d’intérêt composé</title>
-
-  <!-- Tailwind (CDN) -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulateur d'Intérêts Composés</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config = { darkMode: 'class' };</script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            border: "hsl(var(--border))",
+            input: "hsl(var(--input))",
+            ring: "hsl(var(--ring))",
+            background: "hsl(var(--background))",
+            foreground: "hsl(var(--foreground))",
+            primary: {
+              DEFAULT: "hsl(var(--primary))",
+              foreground: "hsl(var(--primary-foreground))",
+            },
+            secondary: {
+              DEFAULT: "hsl(var(--secondary))",
+              foreground: "hsl(var(--secondary-foreground))",
+            },
+            destructive: {
+              DEFAULT: "hsl(var(--destructive))",
+              foreground: "hsl(var(--destructive-foreground))",
+            },
+            muted: {
+              DEFAULT: "hsl(var(--muted))",
+              foreground: "hsl(var(--muted-foreground))",
+            },
+            accent: {
+              DEFAULT: "hsl(var(--accent))",
+              foreground: "hsl(var(--accent-foreground))",
+            },
+            popover: {
+              DEFAULT: "hsl(var(--popover))",
+              foreground: "hsl(var(--popover-foreground))",
+            },
+            card: {
+              DEFAULT: "hsl(var(--card))",
+              foreground: "hsl(var(--card-foreground))",
+            },
+          },
+          borderRadius: {
+            lg: "var(--radius)",
+            md: "calc(var(--radius) - 2px)",
+            sm: "calc(var(--radius) - 4px)",
+          },
+        },
+      },
+    }
+  </script>
   <style>
-    :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
-    html, body, #root { height: 100%; }
+    :root {
+      --background: 0 0% 100%;
+      --foreground: 222.2 84% 4.9%;
+      --card: 0 0% 100%;
+      --card-foreground: 222.2 84% 4.9%;
+      --popover: 0 0% 100%;
+      --popover-foreground: 222.2 84% 4.9%;
+      --primary: 222.2 47.4% 11.2%;
+      --primary-foreground: 210 40% 98%;
+      --secondary: 210 40% 96.1%;
+      --secondary-foreground: 222.2 47.4% 11.2%;
+      --muted: 210 40% 96.1%;
+      --muted-foreground: 215.4 16.3% 46.9%;
+      --accent: 210 40% 96.1%;
+      --accent-foreground: 222.2 47.4% 11.2%;
+      --destructive: 0 84.2% 60.2%;
+      --destructive-foreground: 210 40% 98%;
+      --border: 214.3 31.8% 91.4%;
+      --input: 214.3 31.8% 91.4%;
+      --ring: 222.2 84% 4.9%;
+      --radius: 0.5rem;
+    }
+    .dark {
+      --background: 222.2 84% 4.9%;
+      --foreground: 210 40% 98%;
+      --card: 222.2 84% 4.9%;
+      --card-foreground: 210 40% 98%;
+      --popover: 222.2 84% 4.9%;
+      --popover-foreground: 210 40% 98%;
+      --primary: 210 40% 98%;
+      --primary-foreground: 222.2 47.4% 11.2%;
+      --secondary: 217.2 32.6% 17.5%;
+      --secondary-foreground: 210 40% 98%;
+      --muted: 217.2 32.6% 17.5%;
+      --muted-foreground: 215 20.2% 65.1%;
+      --accent: 217.2 32.6% 17.5%;
+      --accent-foreground: 210 40% 98%;
+      --destructive: 0 62.8% 30.6%;
+      --destructive-foreground: 210 40% 98%;
+      --border: 217.2 32.6% 17.5%;
+      --input: 217.2 32.6% 17.5%;
+      --ring: 212.7 26.8% 83.9%;
+    }
+    * {
+      @apply border-border;
+    }
+    body {
+      @apply bg-background text-foreground;
+    }
   </style>
-
-  <!-- Babel (compile JSX in the browser) -->
-  <script src="https://unpkg.com/@babel/standalone@7.25.7/babel.min.js"></script>
-
-  <!-- React 18 UMD (PINNED + correct order) -->
-  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-
-  <!-- Math + Charts (PINNED) -->
-  <script src="https://unpkg.com/decimal.js@10.4.3/decimal.js"></script>
-  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.min.js"></script>
 </head>
-<body class="min-h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+<body class="antialiased">
   <div id="root"></div>
-
-  <!-- App -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
+  <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.min.js"></script>
+  <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+  <script src="https://unpkg.com/decimal.js/decimal.min.js"></script>
   <script type="text/babel">
-    // UMD globals
-    const { useEffect, useMemo, useState } = React;
-    const ReactDOMGlobal = window.ReactDOM;
-    const {
-      ResponsiveContainer, AreaChart, Area, BarChart, Bar,
-      XAxis, YAxis, Tooltip, Legend, CartesianGrid
-    } = Recharts;
-    const DecimalJS = window.Decimal;
+    const { createElement: e, useState, useEffect, useMemo, Fragment } = React;
+    const { motion } = framerMotion;
+    const { LineChart, AreaChart, BarChart, Line, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+    const Decimal = window.Decimal;
 
-    // --- i18n ---
-    const dict = {
+    const i18n = {
       fr: {
-        title: "Simulateur d’intérêt composé",
-        modeTabs: ["Combien j’aurai ?", "Combien de temps ?", "Quelle contribution ?"],
-        frequency: "Fréquence",
-        contribution: "Contribution",
-        compounding: "Capitalisation",
-        daily: "Quotidienne", weekly: "Hebdomadaire", monthly: "Mensuelle", yearly: "Annuelle",
-        inputs: {
-          p0: "Montant initial (P0)",
-          pmt: "Contribution par période (PMT)",
-          rate: "Rendement annuel nominal (r%)",
-          fee: "Frais annuels (fee%)",
-          infl: "Inflation (infl%)",
-          horizon: "Horizon", years: "années", months: "mois",
-          target: "Cible (FV)",
-          timing: "Moment de la contribution",
-          start: "Début de période", end: "Fin de période",
-          taxes: "Afficher les taxes (à venir)"
-        },
-        outputs: {
-          final: "Solde final / cible",
-          contrib: "Total des contributions",
-          growth: "Total de croissance",
-          ear: "Taux effectif annuel (après frais)",
-          real: "Solde réel (inflation)"
-        },
-        charts: {
-          balanceOverTime: "Solde dans le temps",
-          breakdown: "Décomposition (contributions vs croissance)",
-          totals: "Totaux"
-        },
-        presets: "Préréglages",
-        presetOptions: [
-          {key:'lump', label:'Versement unique'},
-          {key:'monthly', label:'Contributions mensuelles'},
-          {key:'aggressive', label:'Agressif (rendement élevé)'}
-        ],
-        actions: { reset:"Réinitialiser", copy:"Copier le lien", csv:"Exporter CSV" },
-        state: { copied:"Lien copié" },
-        unreachable: "Cible inatteignable avec ces paramètres.",
-        suggestion: "Augmentez la contribution, l’horizon, ou le rendement.",
-        timeToGoal: (y,m) => `Durée estimée: ${y} an(s) ${m} mois`,
-        requiredPMT: (val,cur) => `Contribution requise: ${cur}${fmt(val)}/période`,
-        language:"Langue", currency:"Devise"
+        title: 'Simulateur d\'Intérêts Composés',
+        mode1: 'Combien aurai-je ?',
+        mode2: 'Combien de temps cela prendra-t-il ?',
+        mode3: 'Combien dois-je contribuer ?',
+        initialAmount: 'Montant initial (P0)',
+        periodicContribution: 'Contribution périodique (PMT)',
+        annualReturn: 'Rendement nominal annuel (r%)',
+        fees: 'Frais (f%)',
+        inflation: 'Inflation (infl%)',
+        investmentHorizon: 'Horizon d\'investissement',
+        years: 'Années',
+        months: 'Mois',
+        targetAmount: 'Montant cible (FV_target)',
+        contributionFrequency: 'Fréquence des contributions',
+        compoundingFrequency: 'Fréquence de composition',
+        contributionTiming: 'Timing des contributions',
+        start: 'Début de période',
+        end: 'Fin de période',
+        showTaxes: 'Afficher les taxes (placeholder)',
+        finalBalance: 'Solde final',
+        totalContributions: 'Contributions totales',
+        totalGrowth: 'Croissance totale',
+        effectiveAnnualRate: 'Taux annuel effectif (EAR)',
+        realFinalBalance: 'Solde final réel (ajusté inflation)',
+        balanceOverTime: 'Solde au fil du temps',
+        breakdown: 'Répartition contributions vs croissance',
+        summary: 'Résumé',
+        presets: 'Préréglages',
+        lumpSumOnly: 'Somme forfaitaire seulement',
+        monthlyContributions: 'Contributions mensuelles',
+        reset: 'Réinitialiser',
+        copyLink: 'Copier le lien',
+        exportCSV: 'Exporter CSV',
+        language: 'Langue',
+        currency: 'Devise',
+        theme: 'Thème',
+        unreachable: 'Cible inatteignable avec les paramètres actuels.',
+        suggestRate: 'Taux requis : ',
+        suggestPMT: 'Contribution requise : ',
+        suggestTime: 'Temps supplémentaire : ',
+        daily: 'Quotidien',
+        weekly: 'Hebdomadaire',
+        monthly: 'Mensuel',
+        annually: 'Annuel',
       },
       en: {
-        title: "Compound Interest Simulator",
-        modeTabs: ["How much will I have?","How long will it take?","How much should I contribute?"],
-        frequency: "Frequency",
-        contribution: "Contribution",
-        compounding: "Compounding",
-        daily: "Daily", weekly: "Weekly", monthly: "Monthly", yearly: "Annually",
-        inputs: {
-          p0: "Initial amount (P0)",
-          pmt: "Contribution per period (PMT)",
-          rate: "Annual nominal return (r%)",
-          fee: "Annual fees (fee%)",
-          infl: "Inflation (infl%)",
-          horizon: "Horizon", years: "years", months: "months",
-          target: "Target (FV)",
-          timing: "Contribution timing",
-          start: "Start of period", end: "End of period",
-          taxes: "Show taxes (placeholder)"
-        },
-        outputs: {
-          final: "Final/Target balance",
-          contrib: "Total contributions",
-          growth: "Total growth",
-          ear: "Effective annual rate (after fees)",
-          real: "Real balance (inflation)"
-        },
-        charts: {
-          balanceOverTime: "Balance over time",
-          breakdown: "Breakdown (contrib vs growth)",
-          totals: "Totals"
-        },
-        presets: "Presets",
-        presetOptions: [
-          {key:'lump', label:'Lump sum only'},
-          {key:'monthly', label:'Monthly contributions'},
-          {key:'aggressive', label:'Aggressive (higher return)'}
-        ],
-        actions: { reset:"Reset", copy:"Copy link", csv:"Export CSV" },
-        state: { copied:"Link copied" },
-        unreachable: "Target is unreachable with these parameters.",
-        suggestion: "Increase contribution, horizon or return.",
-        timeToGoal: (y,m) => `Estimated duration: ${y} year(s) ${m} month(s)`,
-        requiredPMT: (val,cur) => `Required contribution: ${cur}${fmt(val)}/period`,
-        language:"Language", currency:"Currency"
+        title: 'Compound Interest Simulator',
+        mode1: 'How much will I have?',
+        mode2: 'How long will it take?',
+        mode3: 'How much should I contribute?',
+        initialAmount: 'Initial amount (P0)',
+        periodicContribution: 'Periodic contribution (PMT)',
+        annualReturn: 'Annual nominal return (r%)',
+        fees: 'Fees (f%)',
+        inflation: 'Inflation (infl%)',
+        investmentHorizon: 'Investment horizon',
+        years: 'Years',
+        months: 'Months',
+        targetAmount: 'Target amount (FV_target)',
+        contributionFrequency: 'Contribution frequency',
+        compoundingFrequency: 'Compounding frequency',
+        contributionTiming: 'Contribution timing',
+        start: 'Start of period',
+        end: 'End of period',
+        showTaxes: 'Show taxes (placeholder)',
+        finalBalance: 'Final balance',
+        totalContributions: 'Total contributions',
+        totalGrowth: 'Total growth',
+        effectiveAnnualRate: 'Effective annual rate (EAR)',
+        realFinalBalance: 'Real final balance (inflation-adjusted)',
+        balanceOverTime: 'Balance over time',
+        breakdown: 'Breakdown contributions vs growth',
+        summary: 'Summary',
+        presets: 'Presets',
+        lumpSumOnly: 'Lump sum only',
+        monthlyContributions: 'Monthly contributions',
+        reset: 'Reset',
+        copyLink: 'Copy link',
+        exportCSV: 'Export CSV',
+        language: 'Language',
+        currency: 'Currency',
+        theme: 'Theme',
+        unreachable: 'Target unreachable with current params.',
+        suggestRate: 'Required rate: ',
+        suggestPMT: 'Required contribution: ',
+        suggestTime: 'Extra time: ',
+        daily: 'Daily',
+        weekly: 'Weekly',
+        monthly: 'Monthly',
+        annually: 'Annually',
+      },
+    };
+
+    function gcd(a, b) {
+      a = Math.abs(a);
+      b = Math.abs(b);
+      while (b !== 0) {
+        let temp = b;
+        b = a % b;
+        a = temp;
       }
-    };
-
-    // --- utils ---
-    const clamp = (v,min,max)=>Math.min(Math.max(v,min),max);
-    const fmt = n => new Intl.NumberFormat(undefined,{maximumFractionDigits:2}).format(Number(n));
-    const currencyFmt = (n,sym)=> `${sym}${fmt(n)}`;
-    const FREQ = { daily:365, weekly:52, monthly:12, yearly:1 };
-
-    const DEFAULTS = {
-      mode:'fv', lang:'fr', currency:'$',
-      p0:10000, pmt:200, rate:7, fee:0.5, infl:2,
-      years:20, months:0, target:100000,
-      contribFreq:'monthly', compFreq:'monthly',
-      timing:'end', showTaxes:false
-    };
-
-    function readStateFromURL(){
-      const p = new URLSearchParams(location.search);
-      const get = (k, d)=> p.get(k) ?? d;
-      const num = (k, d)=> p.has(k) ? Number(p.get(k)) : d;
-      const bool = (k, d)=> p.has(k) ? (p.get(k)==='1'||p.get(k)==='true') : d;
-      return {
-        mode:get('mode',DEFAULTS.mode),
-        lang:get('lang',DEFAULTS.lang),
-        currency:get('cur',DEFAULTS.currency),
-        p0:num('p0',DEFAULTS.p0),
-        pmt:num('pmt',DEFAULTS.pmt),
-        rate:num('r',DEFAULTS.rate),
-        fee:num('fee',DEFAULTS.fee),
-        infl:num('infl',DEFAULTS.infl),
-        years:num('y',DEFAULTS.years),
-        months:num('m',DEFAULTS.months),
-        target:num('tgt',DEFAULTS.target),
-        contribFreq:get('cf',DEFAULTS.contribFreq),
-        compFreq:get('pf',DEFAULTS.compFreq),
-        timing:get('tim',DEFAULTS.timing),
-        showTaxes:bool('tax',DEFAULTS.showTaxes)
-      };
-    }
-    function writeStateToURL(s){
-      const p = new URLSearchParams();
-      p.set('mode',s.mode); p.set('lang',s.lang); p.set('cur',s.currency);
-      p.set('p0',s.p0); p.set('pmt',s.pmt); p.set('r',s.rate); p.set('fee',s.fee); p.set('infl',s.infl);
-      p.set('y',s.years); p.set('m',s.months); p.set('tgt',s.target);
-      p.set('cf',s.contribFreq); p.set('pf',s.compFreq); p.set('tim',s.timing);
-      p.set('tax',s.showTaxes ? '1':'0');
-      history.replaceState(null,'',`${location.pathname}?${p.toString()}`);
+      return a;
     }
 
-    // finance math
-    function netNominal(rPct,fPct){
-      const r = new DecimalJS(rPct).div(100);
-      const f = new DecimalJS(fPct).div(100);
-      return r.plus(1).div(f.plus(1)).minus(1); // (1+r)/(1+f) - 1
+    function lcm(a, b) {
+      return Math.abs(a * b) / gcd(a, b);
     }
-    function earAfterFees(rPct,fPct,compKey){
-      const rNet = netNominal(rPct,fPct);
-      const m = new DecimalJS(FREQ[compKey]);
-      return rNet.div(m).plus(1).pow(m).minus(1);
-    }
-    function simulate({p0,pmt,ratePct,feePct,inflPct,years,months,compFreqKey,contribFreqKey,timing}){
-      const totalYears = new DecimalJS(years).plus(new DecimalJS(months).div(12));
-      const rNet = netNominal(ratePct,feePct);
-      const mComp = new DecimalJS(FREQ[compFreqKey]);
-      const mContrib = new DecimalJS(FREQ[contribFreqKey]);
-      const mStep = DecimalJS.max(mComp,mContrib);       // finest step
-      const dt = new DecimalJS(1).div(mStep);
-      const steps = DecimalJS.ceil(totalYears.times(mStep)).toNumber();
-      const iComp = rNet.div(mComp);
 
-      let balance = new DecimalJS(p0);
-      let contributed = new DecimalJS(0);
-      let growth = new DecimalJS(0);
-      let compCounter = new DecimalJS(0);
-      let contribCounter = new DecimalJS(0);
-
+    function simulateCompound(params) {
+      const { p0, pmt, r, f, contribFreq, compoundFreq, timing, totalYears } = params;
+      const freqToPeriods = { Daily: 365, Weekly: 52, Monthly: 12, Annually: 1 };
+      const contribPeriods = freqToPeriods[contribFreq];
+      const compoundPeriods = freqToPeriods[compoundFreq];
+      const periodsPerYear = lcm(contribPeriods, compoundPeriods);
+      const compoundInterval = periodsPerYear / compoundPeriods;
+      const contribInterval = periodsPerYear / contribPeriods;
+      const rNet = Decimal(1).add(r).div(Decimal(1).add(f)).sub(1);
+      const ratePerCompound = rNet.div(compoundPeriods);
+      const totalSteps = Math.round(periodsPerYear * totalYears);
+      let balance = Decimal(p0);
+      let totalContrib = Decimal(0);
       const data = [];
-      for (let s=0; s<=steps; s++){
-        const tYears = new DecimalJS(s).times(dt);
-        const realAdj = new DecimalJS(1).plus(new DecimalJS(inflPct).div(100)).pow(tYears);
-        const realBal = realAdj.eq(0) ? balance : balance.div(realAdj);
-        data.push({
-          step:s, tYears:Number(tYears), balance:Number(balance),
-          contributed:Number(contributed),
-          growth:Number(balance.minus(contributed).minus(p0)),
-          realBalance:Number(realBal)
-        });
-        if (s===steps) break;
-
-        compCounter = compCounter.plus(mComp.div(mStep));
-        contribCounter = contribCounter.plus(mContrib.div(mStep));
-        const compEvents = compCounter.floor().toNumber();
-        const contribEvents = contribCounter.floor().toNumber();
-
-        if (contribEvents>0 && timing==='start'){
-          const add = new DecimalJS(pmt).times(contribEvents);
-          balance=balance.plus(add); contributed=contributed.plus(add);
-          contribCounter=contribCounter.minus(contribEvents);
+      data.push({ time: 0, balance: balance.toNumber(), totalContrib: totalContrib.toNumber(), growth: balance.sub(totalContrib).toNumber() });
+      for (let step = 1; step <= totalSteps; step++) {
+        if (timing === 'start' && (step - 1) % contribInterval === 0) {
+          balance = balance.add(pmt);
+          totalContrib = totalContrib.add(pmt);
         }
-        if (compEvents>0){
-          for (let k=0;k<compEvents;k++){
-            const before=balance; balance=balance.times(iComp.plus(1));
-            growth = growth.plus(balance.minus(before));
-          }
-          compCounter=compCounter.minus(compEvents);
+        if (step % compoundInterval === 0) {
+          balance = balance.mul(Decimal(1).add(ratePerCompound));
         }
-        if (contribEvents>0 && timing==='end'){
-          const add = new DecimalJS(pmt).times(contribEvents);
-          balance=balance.plus(add); contributed=contributed.plus(add);
-          contribCounter=contribCounter.minus(contribEvents);
+        if (timing === 'end' && step % contribInterval === 0) {
+          balance = balance.add(pmt);
+          totalContrib = totalContrib.add(pmt);
+        }
+        const time = step / periodsPerYear;
+        data.push({ time, balance: balance.toNumber(), totalContrib: totalContrib.toNumber(), growth: balance.sub(totalContrib).toNumber() });
+      }
+      return { data, finalBalance: balance, totalContrib, growth: balance.sub(totalContrib) };
+    }
+
+    function findTimeToTarget(params) {
+      const { p0, pmt, r, f, contribFreq, compoundFreq, timing, target, maxYears = 100 } = params;
+      const freqToPeriods = { Daily: 365, Weekly: 52, Monthly: 12, Annually: 1 };
+      const contribPeriods = freqToPeriods[contribFreq];
+      const compoundPeriods = freqToPeriods[compoundFreq];
+      const periodsPerYear = lcm(contribPeriods, compoundPeriods);
+      const compoundInterval = periodsPerYear / compoundPeriods;
+      const contribInterval = periodsPerYear / contribPeriods;
+      const rNet = Decimal(1).add(r).div(Decimal(1).add(f)).sub(1);
+      const ratePerCompound = rNet.div(compoundPeriods);
+      const maxSteps = periodsPerYear * maxYears;
+      let step = 0;
+      let balance = Decimal(p0);
+      let totalContrib = Decimal(0);
+      while (balance.lt(target) && step < maxSteps) {
+        step++;
+        if (timing === 'start' && (step - 1) % contribInterval === 0) {
+          balance = balance.add(pmt);
+          totalContrib = totalContrib.add(pmt);
+        }
+        if (step % compoundInterval === 0) {
+          balance = balance.mul(Decimal(1).add(ratePerCompound));
+        }
+        if (timing === 'end' && step % contribInterval === 0) {
+          balance = balance.add(pmt);
+          totalContrib = totalContrib.add(pmt);
         }
       }
-      const final = balance;
-      const totalContrib = contributed;
-      const totalGrowth = final.minus(totalContrib).minus(p0);
-      const realFinal = data[data.length-1].realBalance;
-      return { final, totalContrib, totalGrowth, realFinal, data, ear: earAfterFees(ratePct,feePct,compFreqKey) };
+      const time = step / periodsPerYear;
+      if (balance.lt(target)) {
+        return { time: Infinity, message: 'Cible inatteignable dans 100 ans' };
+      }
+      return { time, finalBalance: balance, totalContrib };
     }
-    function timeToGoalSim(params){
-      const maxYears=100, target=new DecimalJS(params.target);
-      const rNet=netNominal(params.ratePct,params.feePct);
-      const mComp=new DecimalJS(FREQ[params.compFreqKey]);
-      const mContrib=new DecimalJS(FREQ[params.contribFreqKey]);
-      const mStep=DecimalJS.max(mComp,mContrib);
-      const iComp=rNet.div(mComp);
-      let balance=new DecimalJS(params.p0);
-      let compCounter=new DecimalJS(0), contribCounter=new DecimalJS(0);
-      let steps=0, maxSteps=mStep.times(maxYears).toNumber();
-      for (; steps<=maxSteps; steps++){
-        if (balance.gte(target)) break;
-        compCounter=compCounter.plus(mComp.div(mStep));
-        contribCounter=contribCounter.plus(mContrib.div(mStep));
-        const compEvents=compCounter.floor().toNumber();
-        const contribEvents=contribCounter.floor().toNumber();
-        if (contribEvents>0 && params.timing==='start'){
-          balance=balance.plus(new DecimalJS(params.pmt).times(contribEvents));
-          contribCounter=contribCounter.minus(contribEvents);
-        }
-        if (compEvents>0){
-          for (let k=0;k<compEvents;k++) balance=balance.times(iComp.plus(1));
-          compCounter=compCounter.minus(compEvents);
-        }
-        if (contribEvents>0 && params.timing==='end'){
-          balance=balance.plus(new DecimalJS(params.pmt).times(contribEvents));
-          contribCounter=contribCounter.minus(contribEvents);
+
+    function findRequiredPMT(params) {
+      const { p0, r, f, contribFreq, compoundFreq, timing, totalYears, target } = params;
+      const fv0 = simulateCompound({ ...params, pmt: 0 }).finalBalance;
+      const fv1 = simulateCompound({ ...params, pmt: 1 }).finalBalance;
+      const annuityFactor = fv1.sub(fv0);
+      if (annuityFactor.eq(0)) {
+        return Infinity;
+      }
+      const required = Decimal(target).sub(fv0).div(annuityFactor);
+      return required;
+    }
+
+    function findRequiredRate(params) {
+      const { totalYears, target } = params;
+      let low = Decimal(0);
+      let high = Decimal(1);
+      for (let it = 0; it < 50; it++) {
+        let mid = low.add(high).div(2);
+        const { finalBalance } = simulateCompound({ ...params, r: mid.toNumber() });
+        if (finalBalance.lt(target)) {
+          low = mid;
+        } else {
+          high = mid;
         }
       }
-      if (steps>maxSteps) return { reachable:false, years:maxYears, months:0 };
-      const tYears = new DecimalJS(steps).div(mStep);
-      const years = tYears.floor();
-      const months = tYears.minus(years).times(12).round();
-      return { reachable:true, years:years.toNumber(), months:months.toNumber(), tYears:tYears.toNumber() };
-    }
-    function requiredPMTByBisection(params){
-      const { p0, ratePct, feePct, inflPct, years, months, compFreqKey, contribFreqKey, timing, target } = params;
-      const horizonYears = new DecimalJS(years).plus(new DecimalJS(months).div(12));
-      const simulateWith = PMT => simulate({
-        p0, pmt:PMT, ratePct, feePct, inflPct,
-        years:horizonYears.toNumber(), months:0,
-        compFreqKey, contribFreqKey, timing
-      }).final;
-      let lo=new DecimalJS(0), hi=new DecimalJS(target).times(2).plus(1000);
-      for (let i=0;i<30;i++){ const fv=simulateWith(hi); if (fv.gte(target)) break; hi=hi.times(2); }
-      for (let it=0; it<60; it++){
-        const mid=lo.plus(hi).div(2); const fv=simulateWith(mid);
-        if (fv.gte(target)) hi=mid; else lo=mid;
-      }
-      return hi;
-    }
-    function exportCSV(rows, filename='simulation.csv'){
-      const header = ['step','years','balance','contributed','growth','real_balance'];
-      const lines = [header.join(',')];
-      for (const r of rows) lines.push([r.step,r.tYears,r.balance,r.contributed,r.growth,r.realBalance].join(','));
-      const blob=new Blob([lines.join('\n')],{type:'text/csv'});
-      const url=URL.createObjectURL(blob); const a=document.createElement('a');
-      a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+      return low.toNumber() * 100;
     }
 
-    // UI bits
-    const Card = ({children}) =>
-      <div className="rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 shadow p-4">{children}</div>;
-    const KPI = ({label,value}) =>
-      <div className="flex flex-col"><span className="text-xs text-slate-500 uppercase">{label}</span><span className="text-xl font-semibold">{value}</span></div>;
-    const Segmented = ({ options, value, onChange, label }) =>
-      <div className="flex flex-col gap-2">
-        {label && <label className="text-sm text-slate-600 dark:text-slate-300">{label}</label>}
-        <div role="tablist" className="inline-flex rounded-xl bg-white dark:bg-slate-900 shadow ring-1 ring-slate-200 dark:ring-slate-800 overflow-hidden">
-          {options.map(opt =>
-            <button key={opt.value} role="tab" aria-selected={value===opt.value}
-              className={(value===opt.value?'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900':'text-slate-700 dark:text-slate-200')+' px-3 py-1.5 text-sm'}
-              onClick={()=>onChange(opt.value)}>{opt.label}</button>
-          )}
-        </div>
-      </div>;
-    function NumberInput({ id, label, value, onChange, step=1, min=0, max=1e9, suffix, slider=false }){
-      const [local,setLocal] = useState(String(value));
-      useEffect(()=>setLocal(String(value)),[value]);
-      useEffect(()=>{ const t=setTimeout(()=>{ const n=Number(local); if(!Number.isNaN(n)) onChange(clamp(n,min,max)); },300); return ()=>clearTimeout(t); },[local]);
-      return (
-        <div className="flex flex-col gap-1">
-          <label htmlFor={id} className="text-sm text-slate-600 dark:text-slate-300">{label}</label>
-          <div className="flex items-center gap-2">
-            <input id={id} type="number" inputMode="decimal" value={local}
-              onChange={e=>setLocal(e.target.value)} step={step} min={min} max={max}
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"/>
-            {suffix && <span className="text-sm text-slate-500">{suffix}</span>}
-          </div>
-          {slider && <input type="range" min={min} max={max} step={step} value={value} aria-label={label} onChange={e=>onChange(Number(e.target.value))} className="w-full"/>}
-        </div>
-      );
-    }
-    const Switch = ({checked,onChange,label,id}) =>
-      <div className="flex items-center justify-between">
-        <label htmlFor={id} className="text-sm text-slate-600 dark:text-slate-300">{label}</label>
-        <button id={id} role="switch" aria-checked={checked} onClick={()=>onChange(!checked)}
-          className={(checked?'bg-emerald-600':'bg-slate-300 dark:bg-slate-700')+' relative inline-flex h-6 w-11 items-center rounded-full transition-colors'}>
-          <span className={(checked?'translate-x-6':'translate-x-1')+' inline-block h-4 w-4 transform rounded-full bg-white'}></span>
-        </button>
-      </div>;
-
-    function ChartsPanel({series, t, currency}){
-      const money = v => currencyFmt(v, currency);
-      const yearsTick = v => `${fmt(v)}`;
-      return (
-        <div className="grid gap-4">
-          <Card>
-            <h3 className="text-sm font-medium mb-2">{t.balanceOverTime}</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={series} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="tYears" tickFormatter={yearsTick} label={{ value: 'années / years', position: 'insideBottom', dy: 10 }} />
-                  <YAxis tickFormatter={money} width={80} />
-                  <Tooltip formatter={(value, name) => [money(value), name]} labelFormatter={(l)=>`${fmt(l)} ans`} />
-                  <Area type="monotone" dataKey="balance" strokeWidth={2} fillOpacity={0.2} fill="url(#g1)" stroke="#2563eb" name="Solde / Balance"/>
-                  <defs>
-                    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopOpacity="0.3"/><stop offset="95%" stopOpacity="0"/>
-                    </linearGradient>
-                  </defs>
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-          <Card>
-            <h3 className="text-sm font-medium mb-2">{t.breakdown}</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={series}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="tYears" tickFormatter={yearsTick} />
-                  <YAxis tickFormatter={money} width={80} />
-                  <Tooltip formatter={money} />
-                  <Area type="monotone" dataKey="contributed" stackId="1" stroke="#0ea5e9" fillOpacity={0.2} name="Contributions" />
-                  <Area type="monotone" dataKey={d=>Math.max(0, d.balance - d.contributed)} stackId="1" stroke="#22c55e" fillOpacity={0.2} name="Croissance / Growth" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-          <Card>
-            <h3 className="text-sm font-medium mb-2">{t.totals}</h3>
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[series[series.length-1]]}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="tYears" tickFormatter={()=>''} />
-                  <YAxis tickFormatter={money} width={80} />
-                  <Tooltip formatter={money} />
-                  <Legend />
-                  <Bar dataKey="contributed" name="Contributions" />
-                  <Bar dataKey={d=>Math.max(0, d.balance - d.contributed)} name="Croissance / Growth" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </div>
-      );
-    }
-
-    function App(){
-      const [state, setState] = useState(readStateFromURL());
-      const t = dict[state.lang] ?? dict.fr;
-      useEffect(()=>writeStateToURL(state),[state]);
-
-      const horizonYears = useMemo(()=> new DecimalJS(state.years).plus(new DecimalJS(state.months).div(12)).toNumber(), [state.years, state.months]);
-      const simParams = useMemo(()=>({
-        p0:state.p0, pmt:state.pmt, ratePct:state.rate, feePct:state.fee, inflPct:state.infl,
-        years: state.mode==='time' ? 1 : horizonYears, months:0,
-        compFreqKey:state.compFreq, contribFreqKey:state.contribFreq, timing:state.timing
-      }), [state, horizonYears]);
-      const sim = useMemo(()=> simulate(simParams), [simParams]);
-
-      const timeResult = useMemo(()=>{
-        if (state.mode!=='time') return null;
-        return timeToGoalSim({
-          p0:state.p0, pmt:state.pmt, ratePct:state.rate, feePct:state.fee,
-          contribFreqKey:state.contribFreq, compFreqKey:state.compFreq, timing:state.timing,
-          target:state.target
-        });
-      }, [state]);
-
-      const requiredPMT = useMemo(()=>{
-        if (state.mode!=='pmt') return null;
-        return requiredPMTByBisection({
-          p0:state.p0, ratePct:state.rate, feePct:state.fee, inflPct:state.infl,
-          years:state.years, months:state.months, compFreqKey:state.compFreq, contribFreqKey:state.contribFreq,
-          timing:state.timing, target:state.target
-        }).toNumber();
-      }, [state]);
-
-      const KPIs = () => (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Card><KPI label={t.outputs.final}  value={(state.mode==='time') ? currencyFmt(state.target, state.currency) : currencyFmt(sim.final, state.currency)}/></Card>
-          <Card><KPI label={t.outputs.contrib} value={currencyFmt(sim.totalContrib, state.currency)}/></Card>
-          <Card><KPI label={t.outputs.growth} value={currencyFmt(sim.totalGrowth, state.currency)}/></Card>
-          <Card><KPI label={t.outputs.ear}    value={`${fmt(sim.ear.times(100).toNumber())}%`}/></Card>
-          <Card><KPI label={t.outputs.real}   value={currencyFmt(sim.realFinal, state.currency)}/></Card>
-        </div>
-      );
-
-      const freqOpts = [
-        {value:'daily', label:t.daily},
-        {value:'weekly', label:t.weekly},
-        {value:'monthly', label:t.monthly},
-        {value:'yearly', label:t.yearly}
+    // Unit tests
+    function runUnitTests() {
+      const testCases = [
+        // 1. Lump sum only
+        {
+          name: 'Lump sum only',
+          params: { p0: 10000, pmt: 0, r: 0.07, f: 0, contribFreq: 'Annually', compoundFreq: 'Annually', timing: 'end', totalYears: 20 },
+          expectedFV: 10000 * Math.pow(1.07, 20),
+        },
+        // 2. PMT only
+        {
+          name: 'PMT only',
+          params: { p0: 0, pmt: 200, r: 0.07, f: 0, contribFreq: 'Monthly', compoundFreq: 'Monthly', timing: 'end', totalYears: 20 },
+          expectedFV: 200 * (Math.pow(1 + 0.07/12, 20*12) - 1) / (0.07/12),
+        },
+        // 3. Mixed with monthly compounding
+        {
+          name: 'Mixed monthly',
+          params: { p0: 10000, pmt: 200, r: 0.07, f: 0, contribFreq: 'Monthly', compoundFreq: 'Monthly', timing: 'end', totalYears: 20 },
+          expectedFV: 10000 * Math.pow(1 + 0.07/12, 20*12) + 200 * (Math.pow(1 + 0.07/12, 20*12) - 1) / (0.07/12),
+        },
+        // 4. Negative/zero rate
+        {
+          name: 'Negative rate',
+          params: { p0: 10000, pmt: 0, r: -0.01, f: 0, contribFreq: 'Annually', compoundFreq: 'Annually', timing: 'end', totalYears: 20 },
+          expectedFV: 10000 * Math.pow(0.99, 20),
+        },
+        // 5. Time to goal with PMT
+        {
+          name: 'Time to goal',
+          params: { p0: 10000, pmt: 200, r: 0.07, f: 0, contribFreq: 'Monthly', compoundFreq: 'Monthly', timing: 'end', target: 100000 },
+          expectedTime: Math.log((100000 * (0.07/12) + 200) / (10000 * (0.07/12) + 200)) / Math.log(1 + 0.07/12) / 12,
+        },
       ];
 
-      return (
-        <main className="mx-auto max-w-7xl px-4 pb-8">
-          <div className="flex items-center justify-between py-4">
-            <h1 className="text-xl font-semibold">{t.title}</h1>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-600 dark:text-slate-300">{t.language}</span>
-                <select aria-label={t.language} value={state.lang} onChange={e=>setState(s=>({...s, lang:e.target.value}))}
-                  className="rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-sm">
-                  <option value="fr">FR</option><option value="en">EN</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-600 dark:text-slate-300">{t.currency}</span>
-                <select aria-label={t.currency} value={state.currency} onChange={e=>setState(s=>({...s, currency:e.target.value}))}
-                  className="rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-sm">
-                  <option value="$">$</option><option value="€">€</option><option value="CA$">CA$</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <section aria-label="Paramètres">
-              <div className="grid gap-4">
-                <div className="flex gap-2" role="tablist" aria-label="Modes">
-                  {[
-                    {key:'fv',   label:t.modeTabs[0]},
-                    {key:'time', label:t.modeTabs[1]},
-                    {key:'pmt',  label:t.modeTabs[2]}
-                  ].map(tab =>
-                    <button key={tab.key} role="tab" aria-selected={state.mode===tab.key}
-                      onClick={()=>setState(s=>({...s, mode:tab.key}))}
-                      className={(state.mode===tab.key?'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900':'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200')+' px-3 py-1.5 rounded-lg ring-1 ring-slate-200 dark:ring-slate-800'}>
-                      {tab.label}
-                    </button>
-                  )}
-                </div>
-
-                <Card>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <NumberInput id="p0"    label={t.inputs.p0}    value={state.p0}    onChange={v=>setState(s=>({...s, p0:v}))} min={0} step={100} slider/>
-                    {state.mode!=='time' &&
-                      <NumberInput id="pmt" label={t.inputs.pmt} value={state.pmt} onChange={v=>setState(s=>({...s, pmt:v}))} min={0} step={10}  slider/>}
-                    <NumberInput id="rate"  label={t.inputs.rate}  value={state.rate}  onChange={v=>setState(s=>({...s, rate:v}))} min={-50} max={100} step={0.1} suffix="%" slider/>
-                    <NumberInput id="fee"   label={t.inputs.fee}   value={state.fee}   onChange={v=>setState(s=>({...s, fee:v}))} min={0}  max={10}  step={0.1} suffix="%" slider/>
-                    <NumberInput id="infl"  label={t.inputs.infl}  value={state.infl}  onChange={v=>setState(s=>({...s, infl:v}))} min={0}  max={20}  step={0.1} suffix="%" slider/>
-                    {state.mode!=='time' &&
-                      <div className="grid grid-cols-2 gap-3">
-                        <NumberInput id="years"  label={t.inputs.years}  value={state.years}  onChange={v=>setState(s=>({...s, years:v}))}  min={0} max={120} step={1}/>
-                        <NumberInput id="months" label={t.inputs.months} value={state.months} onChange={v=>setState(s=>({...s, months:v}))} min={0} max={11}  step={1}/>
-                      </div>}
-                    {state.mode!=='fv' &&
-                      <NumberInput id="target" label={t.inputs.target} value={state.target} onChange={v=>setState(s=>({...s, target:v}))} min={0} step={100} slider/>}
-
-                    <Segmented label={`${t.frequency} – ${t.contribution}`} value={state.contribFreq}
-                      onChange={v=>setState(s=>({...s, contribFreq:v}))}
-                      options={[
-                        {value:'daily',   label:t.daily},
-                        {value:'weekly',  label:t.weekly},
-                        {value:'monthly', label:t.monthly},
-                        {value:'yearly',  label:t.yearly}
-                      ]}/>
-                    <Segmented label={`${t.frequency} – ${t.compounding}`} value={state.compFreq}
-                      onChange={v=>setState(s=>({...s, compFreq:v}))}
-                      options={[
-                        {value:'daily',   label:t.daily},
-                        {value:'weekly',  label:t.weekly},
-                        {value:'monthly', label:t.monthly},
-                        {value:'yearly',  label:t.yearly}
-                      ]}/>
-                    <Segmented label={t.inputs.timing} value={state.timing}
-                      onChange={v=>setState(s=>({...s, timing:v}))}
-                      options={[{value:'start',label:t.inputs.start},{value:'end',label:t.inputs.end}]}/>
-                    <Switch id="taxes" checked={state.showTaxes} onChange={v=>setState(s=>({...s, showTaxes:v}))} label={t.inputs.taxes}/>
-                  </div>
-                </Card>
-
-                <div className="flex items-center gap-3">
-                  <label className="text-sm text-slate-600 dark:text-slate-300">{t.presets}</label>
-                  <select onChange={e=>{
-                    const key=e.target.value;
-                    if (key==='lump') setState(s=>({...s, p0:10000,pmt:0, rate:7,  fee:0.5, infl:2, years:20, months:0, contribFreq:'monthly', compFreq:'monthly'}));
-                    if (key==='monthly') setState(s=>({...s, p0:10000,pmt:200,rate:7,  fee:0.5, infl:2, years:20, months:0, contribFreq:'monthly', compFreq:'monthly'}));
-                    if (key==='aggressive') setState(s=>({...s, p0:10000,pmt:300,rate:10, fee:0.3, infl:2, years:25, months:0, contribFreq:'weekly',  compFreq:'monthly'}));
-                  }} defaultValue="">
-                    <option value="" disabled>—</option>
-                    {t.presetOptions.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}
-                  </select>
-                  <button className="ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-lg ring-1 ring-slate-200 dark:ring-slate-800 bg-white dark:bg-slate-900"
-                          onClick={()=>setState(prev=>({...DEFAULTS, lang:prev.lang, currency:prev.currency}))}>
-                    {dict[state.lang].actions.reset}
-                  </button>
-                  <button className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg ring-1 ring-slate-200 dark:ring-slate-800 bg-white dark:bg-slate-900"
-                          onClick={()=>{ navigator.clipboard.writeText(location.href).then(()=>{ const m=document.getElementById('copied-msg'); if(m){ m.textContent=dict[state.lang].state.copied; setTimeout(()=>m.textContent='',1500); } }); }}>
-                    {dict[state.lang].actions.copy}
-                  </button>
-                  <span id="copied-msg" className="text-sm text-emerald-600"></span>
-                  <button className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg ring-1 ring-slate-200 dark:ring-slate-800 bg-white dark:bg-slate-900" id="csv-btn">
-                    {dict[state.lang].actions.csv}
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            <section aria-label="Résultats" className="grid gap-4">
-              <KPIs />
-              {state.mode==='time' && (
-                <Card>
-                  {timeResult?.reachable
-                    ? <p className="text-sm">{dict[state.lang].timeToGoal(timeResult.years, timeResult.months)}</p>
-                    : (<>
-                        <p className="text-sm text-rose-600">{dict[state.lang].unreachable}</p>
-                        <p className="text-sm mt-1">{dict[state.lang].suggestion}</p>
-                      </>)
-                  }
-                </Card>
-              )}
-              {state.mode==='pmt' && (
-                <Card><p className="text-sm">{dict[state.lang].requiredPMT(requiredPMT ?? 0, state.currency)}</p></Card>
-              )}
-              <ChartsPanel series={sim.data} t={dict[state.lang].charts} currency={state.currency}/>
-            </section>
-          </div>
-
-          <footer className="mt-6 text-xs text-slate-500">
-            <p>Les paramètres sont encodés dans l’URL. Rafraîchissez pour restaurer l’état.</p>
-          </footer>
-        </main>
-      );
+      testCases.forEach(test => {
+        if (test.expectedFV) {
+          const { finalBalance } = simulateCompound(test.params);
+          console.log(test.name, 'FV:', finalBalance.toNumber(), 'Expected:', test.expectedFV, 'Pass:', Math.abs(finalBalance.toNumber() - test.expectedFV) < 1);
+        } else if (test.expectedTime) {
+          const { time } = findTimeToTarget(test.params);
+          console.log(test.name, 'Time:', time, 'Expected:', test.expectedTime, 'Pass:', Math.abs(time - test.expectedTime) < 0.1);
+        }
+      });
     }
 
-    // SAFE RENDER WRAPPER (works with React 18 and falls back if needed)
-    (function mount(){
-      const container = document.getElementById('root');
-      const R = ReactDOMGlobal;
-      if (R && typeof R.createRoot === 'function') {
-        const root = R.createRoot(container); // React 18 path
-        root.render(<App />);
-      } else if (R && typeof R.render === 'function') {
-        R.render(<App />, container);        // Legacy fallback
-      } else {
-        container.textContent = 'ReactDOM not loaded';
+    // Call runUnitTests() in console to run tests
+
+    const defaults = {
+      mode: 'mode1',
+      p0: 10000,
+      pmt: 200,
+      r: 7,
+      f: 0.5,
+      infl: 2,
+      years: 20,
+      months: 0,
+      fvTarget: 100000,
+      contribFreq: 'Monthly',
+      compoundFreq: 'Monthly',
+      timing: 'end',
+      showTaxes: false,
+      lang: 'fr',
+      theme: 'light',
+      currency: '$',
+    };
+
+    const App = () => {
+      const [searchParams, setSearchParams] = useState(new URLSearchParams(window.location.search));
+      const [state, setState] = useState({ ...defaults });
+      const [debouncedState, setDebouncedState] = useState(state);
+      const [darkMode, setDarkMode] = useState(false);
+
+      useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const newState = {};
+        for (const key in defaults) {
+          const value = params.get(key);
+          if (value !== null) {
+            newState[key] = isNaN(Number(value)) ? value : Number(value);
+          }
+        }
+        setState({ ...defaults, ...newState });
+      }, []);
+
+      useEffect(() => {
+        const timer = setTimeout(() => setDebouncedState(state), 300);
+        return () => clearTimeout(timer);
+      }, [state]);
+
+      useEffect(() => {
+        const params = new URLSearchParams();
+        for (const key in state) {
+          params.set(key, state[key]);
+        }
+        window.history.replaceState(null, '', '?' + params.toString());
+      }, [state]);
+
+      useEffect(() => {
+        if (state.theme === 'dark') {
+          document.body.classList.add('dark');
+          setDarkMode(true);
+        } else {
+          document.body.classList.remove('dark');
+          setDarkMode(false);
+        }
+      }, [state.theme]);
+
+      const t = i18n[state.lang];
+
+      const totalYears = state.years + state.months / 12;
+
+      const currencyFormat = new Intl.NumberFormat(state.lang === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'USD' });
+
+      const params = {
+        p0: state.p0,
+        pmt: state.pmt,
+        r: state.r / 100,
+        f: state.f / 100,
+        contribFreq: state.contribFreq,
+        compoundFreq: state.compoundFreq,
+        timing: state.timing,
+        totalYears,
+      };
+
+      let result, data, finalBalance, totalContrib, growth, ear, realFV, message, suggestions;
+
+      const rNet = (1 + params.r) / (1 + params.f) - 1;
+
+      ear = Math.pow(1 + rNet / freqToPeriods[state.compoundFreq], freqToPeriods[state.compoundFreq]) - 1;
+
+      if (state.mode === 'mode1') {
+        result = simulateCompound(params);
+        data = result.data;
+        finalBalance = result.finalBalance;
+        totalContrib = result.totalContrib;
+        growth = result.growth;
+        realFV = finalBalance.div(Math.pow(1 + state.infl / 100, totalYears));
+      } else if (state.mode === 'mode2') {
+        const target = state.fvTarget;
+        result = findTimeToTarget({ ...params, target });
+        if (result.time === Infinity) {
+          message = t.unreachable;
+          // Suggestions
+          suggestions = {};
+          suggestions.requiredRate = findRequiredRate({ ...params, totalYears: 20, target });
+          suggestions.requiredPMT = findRequiredPMT({ ...params, totalYears: 20, target });
+          suggestions.extraTime = findTimeToTarget({ ...params, r: params.r + 0.05, target }).time - 20;
+        } else {
+          const years = Math.floor(result.time);
+          const months = Math.round((result.time - years) * 12);
+          message = `${years} ${t.years} ${months} ${t.months}`;
+          finalBalance = result.finalBalance;
+          totalContrib = result.totalContrib;
+          growth = finalBalance.sub(totalContrib);
+          realFV = finalBalance.div(Math.pow(1 + state.infl / 100, result.time));
+        }
+      } else if (state.mode === 'mode3') {
+        const target = state.fvTarget;
+        const requiredPMT = findRequiredPMT({ ...params, target: state.fvTarget });
+        if (requiredPMT === Infinity || requiredPMT.lt(0)) {
+          message = t.unreachable;
+          // Suggestions
+          suggestions = {};
+          suggestions.requiredRate = findRequiredRate({ ...params, target });
+          suggestions.extraTime = findTimeToTarget({ ...params, totalYears: totalYears + 10, target }).time - totalYears;
+        } else {
+          message = currencyFormat.format(requiredPMT.toNumber());
+          // Run simulation with required PMT
+          result = simulateCompound({ ...params, pmt: requiredPMT.toNumber() });
+          data = result.data;
+          finalBalance = result.finalBalance;
+          totalContrib = result.totalContrib;
+          growth = result.growth;
+          realFV = finalBalance.div(Math.pow(1 + state.infl / 100, totalYears));
+        }
       }
-    })();
+
+      const handleInput = (key, value) => {
+        setState(prev => ({ ...prev, [key]: value }));
+      };
+
+      const handlePreset = (preset) => {
+        let newState;
+        if (preset === 'lumpSumOnly') {
+          newState = { ...defaults, pmt: 0 };
+        } else if (preset === 'monthlyContributions') {
+          newState = { ...defaults };
+        }
+        setState(newState);
+      };
+
+      const handleReset = () => {
+        setState({ ...defaults });
+      };
+
+      const handleCopyLink = () => {
+        navigator.clipboard.writeText(window.location.href);
+      };
+
+      const handleExportCSV = () => {
+        if (!data) return;
+        const csv = 'time,balance,totalContrib,growth\n' + data.map(row => `${row.time},${row.balance},${row.totalContrib},${row.growth}`).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'simulation.csv';
+        a.click();
+      };
+
+      const freqOptions = ['Daily', 'Weekly', 'Monthly', 'Annually'];
+
+      const ModeTabs = () => (
+        e('div', { className: 'flex space-x-1 rounded-xl bg-secondary p-1' },
+          ['mode1', 'mode2', 'mode3'].map(m => (
+            e('button', {
+              key: m,
+              className: `w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-primary ${state.mode === m ? 'bg-background shadow' : 'hover:bg-accent'}`,
+              onClick: () => handleInput('mode', m),
+            }, t[m])
+          ))
+        )
+      );
+
+      const SegmentedControl = ({ value, onChange, options }) => (
+        e('div', { className: 'flex space-x-1 rounded-xl bg-secondary p-1' },
+          options.map(opt => (
+            e('button', {
+              key: opt,
+              className: `w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-primary ${value === opt ? 'bg-background shadow' : 'hover:bg-accent'}`,
+              onClick: () => onChange(opt),
+            }, t[opt.toLowerCase()])
+          ))
+        )
+      );
+
+      const InputWithSlider = ({ label, value, onChange, min, max, step, type = 'number' }) => (
+        e('div', { className: 'space-y-2' },
+          e('label', { className: 'text-sm font-medium' }, label),
+          e('input', { type, value, onChange: e => onChange(type === 'number' ? Number(e.target.value) : e.target.value), className: 'w-full p-2 border rounded' , min, max, step }),
+          e('input', { type: 'range', value, onChange: e => onChange(Number(e.target.value)), min, max, step, className: 'w-full' })
+        )
+      );
+
+      const KpiCard = ({ title, value }) => (
+        e(motion.div, { initial: { opacity: 0 }, animate: { opacity: 1 }, className: 'p-4 border rounded-lg shadow bg-card text-card-foreground' },
+          e('h3', { className: 'text-sm font-medium' }, title),
+          e('p', { className: 'text-2xl font-bold' }, value)
+        )
+      );
+
+      const Chart = ({ title, children }) => (
+        e('div', { className: 'p-4 border rounded-lg shadow bg-card' },
+          e('h3', { className: 'text-sm font-medium mb-2' }, title),
+          e(ResponsiveContainer, { width: '100%', height: 300 }, children)
+        )
+      );
+
+      return e(Fragment, null,
+        e('header', { className: 'flex justify-between items-center p-4 border-b' },
+          e('h1', { className: 'text-2xl font-bold' }, t.title),
+          e('div', { className: 'flex space-x-2' },
+            e('select', { value: state.lang, onChange: e => handleInput('lang', e.target.value), className: 'p-2 border rounded' },
+              e('option', { value: 'fr' }, 'Français'),
+              e('option', { value: 'en' }, 'English')
+            ),
+            e('select', { value: state.currency, onChange: e => handleInput('currency', e.target.value), className: 'p-2 border rounded' },
+              e('option', { value: '$' }, '$ USD')
+            ),
+            e('button', { onClick: () => handleInput('theme', state.theme === 'light' ? 'dark' : 'light'), className: 'p-2 border rounded' },
+              state.theme === 'light' ? 'Dark' : 'Light'
+            )
+          )
+        ),
+        e('div', { className: 'flex flex-col md:flex-row p-4 space-y-4 md:space-y-0 md:space-x-4' },
+          e('div', { className: 'w-full md:w-1/3 space-y-4' },
+            e(ModeTabs),
+            e('div', { className: 'space-y-4' },
+              e(InputWithSlider, { label: t.initialAmount, value: state.p0, onChange: v => handleInput('p0', v), min: 0, max: 1000000, step: 100 }),
+              e(InputWithSlider, { label: t.periodicContribution, value: state.pmt, onChange: v => handleInput('pmt', v), min: 0, max: 10000, step: 10 }),
+              e(InputWithSlider, { label: t.annualReturn, value: state.r, onChange: v => handleInput('r', v), min: -10, max: 20, step: 0.1 }),
+              e(InputWithSlider, { label: t.fees, value: state.f, onChange: v => handleInput('f', v), min: 0, max: 5, step: 0.1 }),
+              e(InputWithSlider, { label: t.inflation, value: state.infl, onChange: v => handleInput('infl', v), min: 0, max: 10, step: 0.1 }),
+              (state.mode === 'mode1' || state.mode === 'mode3') && e('div', { className: 'space-y-2' },
+                e('label', { className: 'text-sm font-medium' }, t.investmentHorizon),
+                e('div', { className: 'flex space-x-2' },
+                  e('input', { type: 'number', value: state.years, onChange: e => handleInput('years', Number(e.target.value)), className: 'w-1/2 p-2 border rounded', min: 0 }),
+                  e('span', null, t.years),
+                  e('input', { type: 'number', value: state.months, onChange: e => handleInput('months', Number(e.target.value)), className: 'w-1/2 p-2 border rounded', min: 0, max: 11 }),
+                  e('span', null, t.months)
+                )
+              ),
+              (state.mode === 'mode2' || state.mode === 'mode3') && e(InputWithSlider, { label: t.targetAmount, value: state.fvTarget, onChange: v => handleInput('fvTarget', v), min: 0, max: 10000000, step: 1000 }),
+              e('div', { className: 'space-y-2' },
+                e('label', { className: 'text-sm font-medium' }, t.contributionFrequency),
+                e(SegmentedControl, { value: state.contribFreq, onChange: v => handleInput('contribFreq', v), options: freqOptions })
+              ),
+              e('div', { className: 'space-y-2' },
+                e('label', { className: 'text-sm font-medium' }, t.compoundingFrequency),
+                e(SegmentedControl, { value: state.compoundFreq, onChange: v => handleInput('compoundFreq', v), options: freqOptions })
+              ),
+              e('div', { className: 'space-y-2' },
+                e('label', { className: 'text-sm font-medium' }, t.contributionTiming),
+                e(SegmentedControl, { value: state.timing, onChange: v => handleInput('timing', v), options: ['start', 'end'] })
+              ),
+              e('div', { className: 'flex items-center space-x-2' },
+                e('input', { type: 'checkbox', checked: state.showTaxes, onChange: e => handleInput('showTaxes', e.target.checked) }),
+                e('label', { className: 'text-sm' }, t.showTaxes)
+              )
+            )
+          ),
+          e('div', { className: 'w-full md:w-2/3 space-y-4' },
+            message && e('p', { className: 'text-destructive' }, message),
+            suggestions && e('div', { className: 'space-y-2' },
+              e('p', null, t.suggestRate, suggestions.requiredRate.toFixed(2), '%'),
+              e('p', null, t.suggestPMT, currencyFormat.format(suggestions.requiredPMT.toNumber())),
+              e('p', null, t.suggestTime, suggestions.extraTime.toFixed(1), ' années')
+            ),
+            e('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' },
+              e(KpiCard, { title: t.finalBalance, value: finalBalance ? currencyFormat.format(finalBalance.toNumber()) : '-' }),
+              e(KpiCard, { title: t.totalContributions, value: totalContrib ? currencyFormat.format(totalContrib.toNumber()) : '-' }),
+              e(KpiCard, { title: t.totalGrowth, value: growth ? currencyFormat.format(growth.toNumber()) : '-' }),
+              e(KpiCard, { title: t.effectiveAnnualRate, value: (ear * 100).toFixed(2) + '%' }),
+              e(KpiCard, { title: t.realFinalBalance, value: realFV ? currencyFormat.format(realFV.toNumber()) : '-' })
+            ),
+            data && e(Chart, { title: t.balanceOverTime },
+              e(LineChart, { data },
+                e(CartesianGrid, { strokeDasharray: "3 3" }),
+                e(XAxis, { dataKey: "time" }),
+                e(YAxis),
+                e(Tooltip),
+                e(Legend),
+                e(Line, { type: "monotone", dataKey: "balance", stroke: "#8884d8" })
+              )
+            ),
+            data && e(Chart, { title: t.breakdown },
+              e(AreaChart, { data },
+                e(CartesianGrid, { strokeDasharray: "3 3" }),
+                e(XAxis, { dataKey: "time" }),
+                e(YAxis),
+                e(Tooltip),
+                e(Legend),
+                e(Area, { type: "monotone", dataKey: "totalContrib", stackId: "1", stroke: "#8884d8", fill: "#8884d8" }),
+                e(Area, { type: "monotone", dataKey: "growth", stackId: "1", stroke: "#82ca9d", fill: "#82ca9d" })
+              )
+            ),
+            data && e(Chart, { title: t.summary },
+              e(BarChart, { data: [{ contrib: totalContrib.toNumber(), growth: growth.toNumber() }] },
+                e(CartesianGrid, { strokeDasharray: "3 3" }),
+                e(XAxis, { dataKey: "name" }),
+                e(YAxis),
+                e(Tooltip),
+                e(Legend),
+                e(Bar, { dataKey: "contrib", fill: "#8884d8" }),
+                e(Bar, { dataKey: "growth", fill: "#82ca9d" })
+              )
+            )
+          )
+        ),
+        e('footer', { className: 'p-4 border-t flex justify-between' },
+          e('select', { onChange: e => handlePreset(e.target.value), className: 'p-2 border rounded' },
+            e('option', null, t.presets),
+            e('option', { value: 'lumpSumOnly' }, t.lumpSumOnly),
+            e('option', { value: 'monthlyContributions' }, t.monthlyContributions)
+          ),
+          e('div', { className: 'space-x-2' },
+            e('button', { onClick: handleReset, className: 'p-2 border rounded' }, t.reset),
+            e('button', { onClick: handleCopyLink, className: 'p-2 border rounded' }, t.copyLink),
+            e('button', { onClick: handleExportCSV, className: 'p-2 border rounded' }, t.exportCSV)
+          )
+        )
+      );
+    };
+
+    ReactDOM.render(e(App), document.getElementById('root'));
   </script>
 </body>
 </html>

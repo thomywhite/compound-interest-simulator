@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulateur d’intérêt composé</title>
+  <!-- Import map pointing to CDN-hosted ESM bundles. This keeps everything client‑side and URL‑sharable. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "decimal.js": "https://esm.sh/decimal.js@10.4.3?bundle",
+        "recharts": "https://esm.sh/recharts@2.6.2",
+        "framer-motion": "https://esm.sh/framer-motion@10.12.16?bundle"
+      }
+    }
+  </script>
+  <!-- Tailwind via CDN. The compiled build is lightweight and supports dark mode classes. -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.3/dist/tailwind.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    /* Hide number input spinners for a cleaner look */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  </style>
+</head>
+<body class="h-full bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+  <div id="app" class="h-full"></div>
+
+  <script type="module">
+    import React, { useState, useEffect } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import Decimal from 'decimal.js';
+    import {
+      LineChart,
+      Line,
+      AreaChart,
+      Area,
+      BarChart,
+      Bar,
+      CartesianGrid,
+      XAxis,
+      YAxis,
+      Tooltip,
+      Legend,
+      ResponsiveContainer
+    } from 'recharts';
+    import { motion, AnimatePresence } from 'framer-motion';
+
+    /*
+     * Utility functions for simulating compound interest with arbitrary contribution
+     * and compounding frequencies. The simulation uses discrete time steps equal
+     * to the least common multiple of the contribution and compounding intervals.
+     */
+    const frequencyMap = {
+      daily: 365,
+      weekly: 52,
+      monthly: 12,
+      annually: 1
+    };
+
+    // Compute least common multiple for two integers
+    function lcm(a, b) {
+      const gcd = (x, y) => (!y ? x : gcd(y, x % y));
+      return Math.abs(a * b) / gcd(a, b);
+    }
+
+    /**
+     * Simulate a balance over time using the smallest time step between
+     * contribution and compounding frequencies. Returns an array of objects
+     * containing time (in years), balance, cumulative contributions and growth.
+     */
+    function simulate({
+      initial,
+      contribution,
+      rate,
+      fee,
+      horizonYears,
+      horizonMonths,
+      compFreq,
+      contribFreq,
+      contribAtStart
+    }) {
+      const mComp = frequencyMap[compFreq];
+      const mContrib = frequencyMap[contribFreq];
+      const stepPerYear = lcm(mComp, mContrib);
+      const totalSteps = Math.round(stepPerYear * (horizonYears + horizonMonths / 12));
+      // Effective net annual rate after fees
+      const rNet = new Decimal(1).plus(new Decimal(rate).dividedBy(100)).dividedBy(
+        new Decimal(1).plus(new Decimal(fee).dividedBy(100))
+      ).minus(1);
+      const perCompRate = rNet.dividedBy(mComp);
+      const contributionPerStep = new Decimal(contribution);
+      let balance = new Decimal(initial);
+      let contribSum = new Decimal(0);
+      let growthSum = new Decimal(0);
+      const results = [];
+      for (let step = 0; step <= totalSteps; step++) {
+        const time = step / stepPerYear;
+        results.push({
+          time,
+          balance: balance.toNumber(),
+          contributions: contribSum.toNumber(),
+          growth: growthSum.toNumber()
+        });
+        // decide contributions at start/end of period
+        if (step < totalSteps) {
+          const isContrib = (step % (stepPerYear / mContrib)) === 0;
+          const isComp = (step % (stepPerYear / mComp)) === 0;
+          if (isContrib && contribAtStart) {
+            balance = balance.plus(contributionPerStep);
+            contribSum = contribSum.plus(contributionPerStep);
+          }
+          if (isComp) {
+            const before = balance;
+            balance = balance.times(new Decimal(1).plus(perCompRate));
+            growthSum = growthSum.plus(balance.minus(before));
+          }
+          if (isContrib && !contribAtStart) {
+            balance = balance.plus(contributionPerStep);
+            contribSum = contribSum.plus(contributionPerStep);
+          }
+        }
+      }
+      return results;
+    }
+
+    /**
+     * Determine the minimum horizon (in years) required to reach a target value.
+     * Uses simulation with incremental steps until the target is met or a max
+     * horizon (e.g., 100 years) is reached. Returns an object with years and
+     * months or null if unreachable.
+     */
+    function timeToTarget({
+      initial,
+      contribution,
+      rate,
+      fee,
+      target,
+      compFreq,
+      contribFreq,
+      contribAtStart
+    }) {
+      const maxYears = 100;
+      const rNet = new Decimal(1).plus(new Decimal(rate).dividedBy(100)).dividedBy(
+        new Decimal(1).plus(new Decimal(fee).dividedBy(100))
+      ).minus(1);
+      const mComp = frequencyMap[compFreq];
+      const mContrib = frequencyMap[contribFreq];
+      const stepPerYear = lcm(mComp, mContrib);
+      const perCompRate = rNet.dividedBy(mComp);
+      const contributionPerStep = new Decimal(contribution);
+      let balance = new Decimal(initial);
+      let steps = 0;
+      while (steps / stepPerYear < maxYears && balance.lessThan(target)) {
+        const isContrib = (steps % (stepPerYear / mContrib)) === 0;
+        const isComp = (steps % (stepPerYear / mComp)) === 0;
+        if (isContrib && contribAtStart) {
+          balance = balance.plus(contributionPerStep);
+        }
+        if (isComp) {
+          balance = balance.times(new Decimal(1).plus(perCompRate));
+        }
+        if (isContrib && !contribAtStart) {
+          balance = balance.plus(contributionPerStep);
+        }
+        steps++;
+      }
+      if (balance.lessThan(target)) return null;
+      const yearsFloat = steps / stepPerYear;
+      const years = Math.floor(yearsFloat);
+      const months = Math.round((yearsFloat - years) * 12);
+      return { years, months };
+    }
+
+    /**
+     * Compute the required periodic contribution to reach a target amount in a
+     * given horizon. Uses a simple binary search on the contribution between
+     * 0 and a large upper bound.
+     */
+    function requiredContribution({
+      initial,
+      rate,
+      fee,
+      horizonYears,
+      horizonMonths,
+      target,
+      compFreq,
+      contribFreq,
+      contribAtStart
+    }) {
+      const upper = new Decimal(target).minus(initial).dividedBy(
+        horizonYears * frequencyMap[contribFreq] + horizonMonths / 12 * frequencyMap[contribFreq]
+      ).times(2).plus(1);
+      let low = new Decimal(0);
+      let high = upper;
+      let found = null;
+      for (let i = 0; i < 40; i++) {
+        const mid = low.plus(high).dividedBy(2);
+        const sim = simulate({
+          initial,
+          contribution: mid.toNumber(),
+          rate,
+          fee,
+          horizonYears,
+          horizonMonths,
+          compFreq,
+          contribFreq,
+          contribAtStart
+        });
+        const finalBal = sim[sim.length - 1].balance;
+        if (finalBal >= target) {
+          found = mid;
+          high = mid;
+        } else {
+          low = mid;
+        }
+      }
+      return found ? found.toNumber() : null;
+    }
+
+    /**
+     * Simple i18n dictionary. Extend with new keys as needed. The default
+     * language is French; English fallback is provided for convenience.
+     */
+    const dict = {
+      fr: {
+        appTitle: "Simulateur d’intérêt composé",
+        initialLabel: "Montant initial",
+        contributionLabel: "Contribution périodique",
+        rateLabel: "Taux annuel (%)",
+        feeLabel: "Frais annuels (%)",
+        horizonLabel: "Horizon d’investissement (années/mois)",
+        targetLabel: "Montant cible",
+        compFreqLabel: "Fréquence de capitalisation",
+        contribFreqLabel: "Fréquence de contribution",
+        startOfPeriod: "Début de période",
+        endOfPeriod: "Fin de période",
+        modeFuture: "Quel montant ?",
+        modeTime: "Combien de temps ?",
+        modeContrib: "Quelle contribution ?",
+        totalContrib: "Total des contributions",
+        totalGrowth: "Total des intérêts",
+        finalBalance: "Solde final",
+        realBalance: "Solde réel (inflation)",
+        effRate: "Taux annuel effectif",
+        contributions: "Contributions",
+        growth: "Croissance",
+        balanceOverTime: "Solde au fil du temps",
+        copyLink: "Copier le lien",
+        exportCSV: "Exporter CSV",
+        reset: "Réinitialiser",
+        presets: "Préréglages",
+        presetLump: "Versement unique",
+        presetMonthly: "Contributions mensuelles",
+        unreachable: "Cible inatteignable avec les paramètres actuels"
+      },
+      en: {
+        appTitle: "Compound interest simulator",
+        initialLabel: "Initial amount",
+        contributionLabel: "Periodic contribution",
+        rateLabel: "Annual rate (%)",
+        feeLabel: "Annual fee (%)",
+        horizonLabel: "Investment horizon (years/months)",
+        targetLabel: "Target amount",
+        compFreqLabel: "Compounding frequency",
+        contribFreqLabel: "Contribution frequency",
+        startOfPeriod: "Start of period",
+        endOfPeriod: "End of period",
+        modeFuture: "How much will I have?",
+        modeTime: "How long will it take?",
+        modeContrib: "How much should I contribute?",
+        totalContrib: "Total contributions",
+        totalGrowth: "Total growth",
+        finalBalance: "Final balance",
+        realBalance: "Real balance (inflation)",
+        effRate: "Effective annual rate",
+        contributions: "Contributions",
+        growth: "Growth",
+        balanceOverTime: "Balance over time",
+        copyLink: "Copy link",
+        exportCSV: "Export CSV",
+        reset: "Reset",
+        presets: "Presets",
+        presetLump: "Lump sum only",
+        presetMonthly: "Monthly contributions",
+        unreachable: "Target unreachable with current parameters"
+      }
+    };
+
+    // Helper for formatting currency
+    function formatCurrency(value, locale = 'fr-CA', currency = 'CAD') {
+      return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(
+        value
+      );
+    }
+
+    function App() {
+      // Persist state via URL parameters
+      const search = new URLSearchParams(window.location.search);
+      // Language and theme toggles
+      const [lang, setLang] = useState(search.get('lang') || 'fr');
+      const [dark, setDark] = useState(search.get('theme') === 'dark');
+      // Core inputs
+      const [mode, setMode] = useState(search.get('mode') || 'future');
+      const [initial, setInitial] = useState(
+        parseFloat(search.get('p0')) || 10000
+      );
+      const [contrib, setContrib] = useState(
+        parseFloat(search.get('pmt')) || 200
+      );
+      const [rate, setRate] = useState(parseFloat(search.get('rate')) || 7);
+      const [fee, setFee] = useState(parseFloat(search.get('fee')) || 0.5);
+      const [infl, setInfl] = useState(parseFloat(search.get('infl')) || 2);
+      const [horizonYears, setHorizonYears] = useState(
+        parseInt(search.get('years')) || 20
+      );
+      const [horizonMonths, setHorizonMonths] = useState(
+        parseInt(search.get('months')) || 0
+      );
+      const [target, setTarget] = useState(
+        parseFloat(search.get('target')) || 100000
+      );
+      const [compFreq, setCompFreq] = useState(
+        search.get('compFreq') || 'monthly'
+      );
+      const [contribFreq, setContribFreq] = useState(
+        search.get('contribFreq') || 'monthly'
+      );
+      const [contribAtStart, setContribAtStart] = useState(
+        search.get('when') === 'start'
+      );
+
+      // Derived results
+      const [series, setSeries] = useState([]);
+      const [summary, setSummary] = useState({});
+      const [timeReq, setTimeReq] = useState(null);
+      const [requiredContrib, setRequiredContrib] = useState(null);
+      const [unreachable, setUnreachable] = useState(false);
+
+      // Update URL on state change
+      useEffect(() => {
+        const params = new URLSearchParams();
+        params.set('lang', lang);
+        params.set('theme', dark ? 'dark' : 'light');
+        params.set('mode', mode);
+        params.set('p0', initial);
+        params.set('pmt', contrib);
+        params.set('rate', rate);
+        params.set('fee', fee);
+        params.set('infl', infl);
+        params.set('years', horizonYears);
+        params.set('months', horizonMonths);
+        params.set('target', target);
+        params.set('compFreq', compFreq);
+        params.set('contribFreq', contribFreq);
+        params.set('when', contribAtStart ? 'start' : 'end');
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState({}, '', newUrl);
+      }, [lang, dark, mode, initial, contrib, rate, fee, infl, horizonYears, horizonMonths, target, compFreq, contribFreq, contribAtStart]);
+
+      // Perform calculations whenever inputs change
+      useEffect(() => {
+        if (mode === 'future') {
+          // Mode 1: compute future value time series
+          const data = simulate({
+            initial,
+            contribution: contrib,
+            rate,
+            fee,
+            horizonYears,
+            horizonMonths,
+            compFreq,
+            contribFreq,
+            contribAtStart
+          });
+          setSeries(
+            data.map((d) => ({
+              time: d.time,
+              balance: d.balance,
+              contributions: d.contributions,
+              growth: d.growth
+            }))
+          );
+          const final = data[data.length - 1];
+          const realFinal = final.balance / Math.pow(1 + infl / 100, horizonYears + horizonMonths / 12);
+          setSummary({
+            finalBalance: final.balance,
+            totalContrib: final.contributions,
+            totalGrowth: final.growth,
+            effRate: Math.pow(1 + ((1 + rate / 100) / (1 + fee / 100) - 1) / frequencyMap[compFreq], frequencyMap[compFreq]) - 1,
+            realBalance: realFinal
+          });
+          setTimeReq(null);
+          setRequiredContrib(null);
+        } else if (mode === 'time') {
+          // Mode 2: compute time to reach target
+          const result = timeToTarget({
+            initial,
+            contribution: contrib,
+            rate,
+            fee,
+            target,
+            compFreq,
+            contribFreq,
+            contribAtStart
+          });
+          if (!result) {
+            setUnreachable(true);
+            setTimeReq(null);
+          } else {
+            setUnreachable(false);
+            setTimeReq(result);
+          }
+          setSeries([]);
+          setRequiredContrib(null);
+        } else if (mode === 'contrib') {
+          // Mode 3: compute required contribution
+          const req = requiredContribution({
+            initial,
+            rate,
+            fee,
+            horizonYears,
+            horizonMonths,
+            target,
+            compFreq,
+            contribFreq,
+            contribAtStart
+          });
+          if (req === null) {
+            setUnreachable(true);
+            setRequiredContrib(null);
+          } else {
+            setUnreachable(false);
+            setRequiredContrib(req);
+          }
+          setSeries([]);
+          setTimeReq(null);
+        }
+      }, [mode, initial, contrib, rate, fee, infl, horizonYears, horizonMonths, target, compFreq, contribFreq, contribAtStart]);
+
+      // Update dark mode class
+      useEffect(() => {
+        document.documentElement.classList.toggle('dark', dark);
+      }, [dark]);
+
+      const t = dict[lang];
+
+      // Handlers to apply presets
+      function applyPreset(name) {
+        if (name === 'lump') {
+          setContrib(0);
+          setContribFreq('annually');
+        }
+        if (name === 'monthly') {
+          setContrib(200);
+          setContribFreq('monthly');
+        }
+      }
+
+      // Copy link to clipboard
+      function copyLink() {
+          navigator.clipboard.writeText(window.location.href);
+          alert('Lien copié');
+      }
+
+      // Export CSV
+      function exportCSV() {
+        const header = 'time,balance,contributions,growth\n';
+        const rows = series
+          .map((d) => `${d.time},${d.balance},${d.contributions},${d.growth}`)
+          .join('\n');
+        const blob = new Blob([header + rows], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'simulation.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      // Reset to defaults
+      function reset() {
+        setInitial(10000);
+        setContrib(200);
+        setRate(7);
+        setFee(0.5);
+        setInfl(2);
+        setHorizonYears(20);
+        setHorizonMonths(0);
+        setTarget(100000);
+        setCompFreq('monthly');
+        setContribFreq('monthly');
+        setContribAtStart(false);
+      }
+
+      return (
+        <div className="flex flex-col h-full">
+          {/* Header with title, theme toggle and language switch */}
+          <header className="flex items-center justify-between p-4 shadow-md bg-white dark:bg-gray-800">
+            <h1 className="text-xl font-bold">{t.appTitle}</h1>
+            <div className="flex items-center gap-4">
+              <select
+                value={lang}
+                onChange={(e) => setLang(e.target.value)}
+                className="rounded border p-1 text-sm dark:bg-gray-700"
+              >
+                <option value="fr">FR</option>
+                <option value="en">EN</option>
+              </select>
+              <button
+                onClick={() => setDark(!dark)}
+                className="px-2 py-1 rounded border dark:bg-gray-700"
+              >
+                {dark ? '☾' : '☀'}
+              </button>
+            </div>
+          </header>
+          <main className="flex-1 overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Left panel: inputs */}
+            <section className="space-y-4">
+              {/* Mode selection */}
+              <div className="flex gap-2">
+                <button
+                  className={`flex-1 px-3 py-2 border rounded ${mode === 'future' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+                  onClick={() => setMode('future')}
+                >
+                  {t.modeFuture}
+                </button>
+                <button
+                  className={`flex-1 px-3 py-2 border rounded ${mode === 'time' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+                  onClick={() => setMode('time')}
+                >
+                  {t.modeTime}
+                </button>
+                <button
+                  className={`flex-1 px-3 py-2 border rounded ${mode === 'contrib' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+                  onClick={() => setMode('contrib')}
+                >
+                  {t.modeContrib}
+                </button>
+              </div>
+              {/* Initial */}
+              <div>
+                <label className="block text-sm font-medium mb-1">{t.initialLabel}</label>
+                <input
+                  type="number"
+                  value={initial}
+                  onChange={(e) => setInitial(parseFloat(e.target.value) || 0)}
+                  className="w-full rounded border px-2 py-1 dark:bg-gray-700"
+                />
+              </div>
+              {/* Contribution */}
+              {mode !== 'contrib' && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">{t.contributionLabel}</label>
+                  <input
+                    type="number"
+                    value={contrib}
+                    onChange={(e) => setContrib(parseFloat(e.target.value) || 0)}
+                    className="w-full rounded border px-2 py-1 dark:bg-gray-700"
+                  />
+                </div>
+              )}
+              {/* Rate */}
+              <div>
+                <label className="block text-sm font-medium mb-1">{t.rateLabel}</label>
+                <input
+                  type="number"
+                  value={rate}
+                  onChange={(e) => setRate(parseFloat(e.target.value) || 0)}
+                  className="w-full rounded border px-2 py-1 dark:bg-gray-700"
+                />
+              </div>
+              {/* Fee */}
+              <div>
+                <label className="block text-sm font-medium mb-1">{t.feeLabel}</label>
+                <input
+                  type="number"
+                  value={fee}
+                  onChange={(e) => setFee(parseFloat(e.target.value) || 0)}
+                  className="w-full rounded border px-2 py-1 dark:bg-gray-700"
+                />
+              </div>
+              {/* Inflation */}
+              {mode === 'future' && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Inflation (%)</label>
+                  <input
+                    type="number"
+                    value={infl}
+                    onChange={(e) => setInfl(parseFloat(e.target.value) || 0)}
+                    className="w-full rounded border px-2 py-1 dark:bg-gray-700"
+                  />
+                </div>
+              )}
+              {/* Horizon or target */}
+              {mode === 'future' && (
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-1">{t.horizonLabel.split('(')[0]}</label>
+                    <input
+                      type="number"
+                      value={horizonYears}
+                      onChange={(e) => setHorizonYears(parseInt(e.target.value) || 0)}
+                      className="w-full rounded border px-2 py-1 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div className="w-1/3">
+                    <label className="block text-sm font-medium mb-1">Mois</label>
+                    <input
+                      type="number"
+                      value={horizonMonths}
+                      onChange={(e) => setHorizonMonths(parseInt(e.target.value) || 0)}
+                      className="w-full rounded border px-2 py-1 dark:bg-gray-700"
+                    />
+                  </div>
+                </div>
+              )}
+              {mode === 'time' && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">{t.targetLabel}</label>
+                  <input
+                    type="number"
+                    value={target}
+                    onChange={(e) => setTarget(parseFloat(e.target.value) || 0)}
+                    className="w-full rounded border px-2 py-1 dark:bg-gray-700"
+                  />
+                </div>
+              )}
+              {mode === 'contrib' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t.targetLabel}</label>
+                    <input
+                      type="number"
+                      value={target}
+                      onChange={(e) => setTarget(parseFloat(e.target.value) || 0)}
+                      className="w-full rounded border px-2 py-1 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium mb-1">{t.horizonLabel.split('(')[0]}</label>
+                      <input
+                        type="number"
+                        value={horizonYears}
+                        onChange={(e) => setHorizonYears(parseInt(e.target.value) || 0)}
+                        className="w-full rounded border px-2 py-1 dark:bg-gray-700"
+                      />
+                    </div>
+                    <div className="w-1/3">
+                      <label className="block text-sm font-medium mb-1">Mois</label>
+                      <input
+                        type="number"
+                        value={horizonMonths}
+                        onChange={(e) => setHorizonMonths(parseInt(e.target.value) || 0)}
+                        className="w-full rounded border px-2 py-1 dark:bg-gray-700"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+              {/* Frequencies */}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">{t.compFreqLabel}</label>
+                  <select
+                    value={compFreq}
+                    onChange={(e) => setCompFreq(e.target.value)}
+                    className="w-full rounded border p-1 dark:bg-gray-700"
+                  >
+                    <option value="daily">Quotidienne</option>
+                    <option value="weekly">Hebdomadaire</option>
+                    <option value="monthly">Mensuelle</option>
+                    <option value="annually">Annuelle</option>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">{t.contribFreqLabel}</label>
+                  <select
+                    value={contribFreq}
+                    onChange={(e) => setContribFreq(e.target.value)}
+                    className="w-full rounded border p-1 dark:bg-gray-700"
+                  >
+                    <option value="daily">Quotidienne</option>
+                    <option value="weekly">Hebdomadaire</option>
+                    <option value="monthly">Mensuelle</option>
+                    <option value="annually">Annuelle</option>
+                  </select>
+                </div>
+              </div>
+              {/* Contribution timing */}
+              <div className="flex gap-2 items-center">
+                <span className="text-sm font-medium">{contribAtStart ? t.startOfPeriod : t.endOfPeriod}</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={contribAtStart}
+                    onChange={() => setContribAtStart(!contribAtStart)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer dark:bg-gray-700 peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+              {/* Presets, reset, actions */}
+              <div className="flex gap-2 flex-wrap mt-2">
+                <button
+                  className="px-3 py-1 border rounded dark:bg-gray-700"
+                  onClick={() => applyPreset('lump')}
+                >
+                  {t.presetLump}
+                </button>
+                <button
+                  className="px-3 py-1 border rounded dark:bg-gray-700"
+                  onClick={() => applyPreset('monthly')}
+                >
+                  {t.presetMonthly}
+                </button>
+                <button
+                  className="px-3 py-1 border rounded dark:bg-gray-700"
+                  onClick={reset}
+                >
+                  {t.reset}
+                </button>
+                {mode === 'future' && series.length > 0 && (
+                  <>
+                    <button
+                      className="px-3 py-1 border rounded dark:bg-gray-700"
+                      onClick={copyLink}
+                    >
+                      {t.copyLink}
+                    </button>
+                    <button
+                      className="px-3 py-1 border rounded dark:bg-gray-700"
+                      onClick={exportCSV}
+                    >
+                      {t.exportCSV}
+                    </button>
+                  </>
+                )}
+              </div>
+            </section>
+
+            {/* Right panel: results and charts */}
+            <section className="space-y-4">
+              {mode === 'future' && series.length > 0 && (
+                <>
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-3 border rounded dark:bg-gray-800">
+                      <div className="text-xs uppercase font-bold mb-1">{t.finalBalance}</div>
+                      <div className="text-lg">{formatCurrency(summary.finalBalance)}</div>
+                    </div>
+                    <div className="p-3 border rounded dark:bg-gray-800">
+                      <div className="text-xs uppercase font-bold mb-1">{t.totalContrib}</div>
+                      <div className="text-lg">{formatCurrency(summary.totalContrib)}</div>
+                    </div>
+                    <div className="p-3 border rounded dark:bg-gray-800">
+                      <div className="text-xs uppercase font-bold mb-1">{t.totalGrowth}</div>
+                      <div className="text-lg">{formatCurrency(summary.totalGrowth)}</div>
+                    </div>
+                    <div className="p-3 border rounded dark:bg-gray-800">
+                      <div className="text-xs uppercase font-bold mb-1">{t.effRate}</div>
+                      <div className="text-lg">{(summary.effRate * 100).toFixed(2)}%</div>
+                    </div>
+                    <div className="p-3 border rounded dark:bg-gray-800">
+                      <div className="text-xs uppercase font-bold mb-1">{t.realBalance}</div>
+                      <div className="text-lg">{formatCurrency(summary.realBalance)}</div>
+                    </div>
+                  </div>
+                  {/* Charts */}
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={series} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="time" tickFormatter={(v) => v.toFixed(1)} />
+                        <YAxis />
+                        <Tooltip formatter={(value) => formatCurrency(value)} />
+                        <Legend />
+                        <Line type="monotone" dataKey="balance" stroke="#3b82f6" name={t.finalBalance} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={series} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="time" tickFormatter={(v) => v.toFixed(1)} />
+                        <YAxis />
+                        <Tooltip formatter={(value) => formatCurrency(value)} />
+                        <Legend />
+                        <Area type="monotone" dataKey="contributions" stackId="1" stroke="#10b981" fill="#10b981" name={t.contributions} />
+                        <Area type="monotone" dataKey="growth" stackId="1" stroke="#f59e0b" fill="#f59e0b" name={t.growth} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[summary]}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" hide={true} />
+                        <YAxis />
+                        <Tooltip formatter={(value) => formatCurrency(value)} />
+                        <Legend />
+                        <Bar dataKey="totalContrib" fill="#10b981" name={t.contributions} />
+                        <Bar dataKey="totalGrowth" fill="#f59e0b" name={t.growth} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </>
+              )}
+              {mode === 'time' && (
+                <div className="p-4 border rounded dark:bg-gray-800">
+                  {unreachable ? (
+                    <p className="text-red-600 dark:text-red-400">{t.unreachable}</p>
+                  ) : timeReq ? (
+                    <p>
+                      {t.modeTime}: {timeReq.years} ans {timeReq.months} mois
+                    </p>
+                  ) : (
+                    <p>{t.modeTime}...</p>
+                  )}
+                </div>
+              )}
+              {mode === 'contrib' && (
+                <div className="p-4 border rounded dark:bg-gray-800">
+                  {unreachable ? (
+                    <p className="text-red-600 dark:text-red-400">{t.unreachable}</p>
+                  ) : requiredContrib !== null ? (
+                    <p>
+                      {t.modeContrib}: {formatCurrency(requiredContrib)} par {contribFreq}
+                    </p>
+                  ) : (
+                    <p>{t.modeContrib}...</p>
+                  )}
+                </div>
+              )}
+            </section>
+          </main>
+        </div>
+      );
+    }
+
+    const root = createRoot(document.getElementById('app'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

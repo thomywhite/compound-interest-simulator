@@ -28,7 +28,7 @@
 <!-- Recharts (primary CDN + fallback) -->
 <script id="recharts-cdn" src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
 <script>
-  // Fallback to unpkg if jsDelivr fails or is blocked
+  // Fallback to unpkg if jsDelivr fails or is blocked (updated pinned UMD fallback)
   (function ensureRecharts(){
     function ok(){ return !!window.Recharts && typeof window.Recharts.AreaChart === 'function'; }
     if (ok()) return;
